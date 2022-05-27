@@ -29,7 +29,7 @@ They're quick weapons that damage your enemies for short amounts of time upon hi
         weapon = sword1
         weaponStrength = 10 
         print("A steel longsword.\n\
-It can hit multiple foes, but takes a bit to attack with and is bad against tanky foes.")  
+It does hight damage, but it can only hit 1 foe at a time.")  
 def end(): 
     print("You have been slain.") 
     enter = input("Press 'enter' on your keyboard to start a new game:)") 
@@ -150,7 +150,7 @@ but the guard rejects your cries for peace and hits you, making you lose ",playe
             else:
                 print("You risk getting hit to try and desperately plead with the only human you've had to fight so far, \n\
 and the guard hesitantly stops his attack to let you plead your case.")
-                time.sleep(5)
+                #time.sleep(5)
                 return morality
         elif prompt == "all in": 
             damage = random.randint(0,1) 
@@ -219,7 +219,7 @@ body is still at room temperature, you shake your head in disagreement, and get 
     rArm = 50
     lArm = 50
     finalBlow = 100
-    time.sleep(5)
+    #time.sleep(5)
     while rLeg > 0 and playerCurrentHealth > 0:
         print("Joshro's right leg's health: ", rLeg) 
         print("Max's health:", playerCurrentHealth)
@@ -302,7 +302,7 @@ body is still at room temperature, you shake your head in disagreement, and get 
             return
     print("You've weakened Joshro severely, but the fight isn't over yet! You need to attack him directly and land the final blow \n\
 so that Joshro's reign of terror can end once and for all...")
-    time.sleep(5)
+    #time.sleep(5)
     while finalBlow > 0 and playerCurrentHealth > 0:
         print("Joshro's health: ", finalBlow) 
         print("Max's health: ", playerCurrentHealth)
@@ -342,7 +342,7 @@ body is still at room temperature, you shake your head in disagreement, and get 
     bruceHelp = 5
     leaveMessage = False
     bruceDamage = random.randint(1,10)
-    time.sleep(5)
+    #time.sleep(5)
     while rLeg > 0 and playerCurrentHealth > 0:
         print("Joshro's right leg's health: ", rLeg) 
         print("Max's health: ", playerCurrentHealth)
@@ -481,7 +481,7 @@ body is still at room temperature, you shake your head in disagreement, and get 
             return
     print("You've weakened Joshro severely, but the fight isn't over yet! You need to attack him directly and land the final blow \n\
 so that Joshro's reign of terror can end once and for all...")
-    time.sleep(5)
+    #time.sleep(5)
     while finalBlow > 0 and playerCurrentHealth > 0:
         print("Joshro's health: ", finalBlow) 
         print("Max's health: ", playerCurrentHealth)
@@ -520,7 +520,7 @@ so that Joshro's reign of terror can end once and for all...")
 falls into your arms, and you sit on the ground to take a breather. \n\
 You did it! You slayed the dragon and saved the girl, but there are still things you must take care of...")
 def deadlyTreasure():
-    global playerMaxHealth
+    global playerMaxHealth, playerCurrentHealth
     print("While walking through the forest, you come across a golden box \n\
 that shimmers in the sunlight. A key lays inside the tree next to the box, \n\
 but the tree hole is too dark for you to see what else is inside the tree.") 
@@ -537,7 +537,8 @@ poisonous spider bites you and everything goes black- forever...")
         elif dieLive == 2 or 3: 
             print("You grab the key quickly, and open the box to find a potion \n\
 that increases your health by 50. You drink it, and continue along the path.") 
-            playerMaxHealth = playerMaxHealth + 50 
+            playerMaxHealth += 50
+            playerCurrentHealth = min(playerMaxHealth, playerCurrentHealth + 50) 
     elif key == "let it be": 
         print("You decide it's not worth the risk, and continue walking on the \n\
 road.") 
@@ -605,20 +606,20 @@ an old 'stable', or a strangely shaped 'tree'. Where do you look? ")
             print("You enter the dusty and decrepit stable, where you make a mental note of how rotten the wooden interior looks from the several \n\
 years of neglect. Fortunately, a piece of wood that isn't entirely ruined juts out of the wall, and you decide that this will suffice as \n\
 a lever. You grab the STICK, and exit the stable.")
-            time.sleep(5)
+            #time.sleep(5)
             stick = True
             stable = True
         elif whereTolook == "shed":
             print("You enter the small shed, and laugh to yourself as you observe just how little gardening tools and other trinkets typically \n\
 found in a shed are actually present. One thing that isn't present, however, is the placeholder, or even something that could pass for one. \n\
 Saddened by this, you leave the shed.")
-            time.sleep(5)
+            #time.sleep(5)
             shed = True
         elif whereTolook == "tree":
             print("After having a previous encounter when it comes to sticking your hand inside trees, you hesitate before blindly \n\
 shoving your hand inside the dark crevice, and your hand connects with something cold- the PLACEHOLDER! You don't test your luck any further \n\
 and exit the hole, PLACEHOLDER in hand.")
-            time.sleep(5)
+            #time.sleep(5)
             placeholder = True
             tree = True
     print("Using your knowledge as the village carpenter, you combine these two objects into a functional lever, and place it in the appropriate location \n\
@@ -649,7 +650,8 @@ Before you take a swig, you doubt how safe ingesting the bottle's contents will 
         if healthNothingdeadly == 1:
             print("You drink the potion, but after sitting down, you instantly pass out. You wake up in the morning feeling strangely \n\
 healthier, and relish in the fact that you now have 50 more health!")
-            playerMaxHealth = playerMaxHealth + 50
+            playerMaxHealth += 50
+            playerCurrentHealth = min(playerMaxHealth, playerCurrentHealth + 50)
             potionTroll = False
             return potionTroll
         elif healthNothingdeadly == 2:
@@ -768,6 +770,35 @@ You regain your composure, and proceed to start walking along the path again.", 
 
 
 
+endingOneHappens = "After slaying the dragon, you return Misty to her respective kingdom, and she thanks you profusely. Before you fully become content with your life, you remember \n\
+the promise you made to the goblin that you would come work for him to repay your debt (although you still scratch your head as to what exactly the *debt* is). Nevertheless, you are a man of your word, \n\
+and make the long trek to the goblin's farm, and find that the farm life isn't so bad when the person you're doing the farming for is so small in stature that a farm to him is like a small garden to you. \n\
+In addition to this, you actually find that the goblin, whose name is soon discovered to be Bilbo, is surprisingly very funny and witty, and you two get along splendidly. The farm life treats you very well, \n\
+and you decide to take up farming even after your servitude to Bilbo was fulfilled, selling various vegetables to travellers going on journeys of their own... \n\
+YOU GOT THE 'Man of your word' ENDING! (1 out of 4)"
+endingTwoHappens = "After defeating Joshro, you bring Misty back to her palace, where a celebration is held in your name for bringing back the kingdom's beloved princess. After recuperating yourself from the \n\
+many nights of royal partying, you leave the kingdom in a great mood. While walking across an outrageously decrepit bridge, you remember Samantha and the offer she made to you. Seeing how disgusting some bridges can be \n\
+without proper maintenance, you decide that bridge cleaning is the next endeavor you wish to undertake. Returning to Samantha's bridge, you see that she's already made several noticeable steps to \n\
+make her bridge look more approachable, which gives you the final push you need to really take this bridge thing seriously. For several years, you and Samantha work tirelessly to keep the bridge spotless, \n\
+and become great friends in the process. After Samantha leaves the bridge business to pursue a career in dramatic acting, you transform the bridge into a resting place for weary travellers to \n\
+to safely take shelter at while they go fight dragons and save princesses of their own... \n\
+YOU GOT THE 'Human troll' ENDING! (2 out of 4)"
+endingThreeHappens = "After putting an end to Joshro's reign of terror, you and Misty travel back to her kingdom, and you get there just in time to see her get married, and start to feel a little bit empty. \n\
+This emptiness consumes you for the next couple of days while you head back to the cottage, and you struggle to put your finger on what exactly is bothering you so much. That is, until you and Olivia meet again. \n\
+The reunion fills you with an overwhelming sense of bliss, and you feel that emptiness become replaced with a new type of emotion- love. In the space of 8 years, you and Olivia open up a tavern, and your relationship with her \n\
+eventually shifts from a platonic one to one filled with golden memories and endless laughter, a sign of the increasingly apparent chemistry between you two. Then, on the tenth anniversary since you two met during your quest to \n\
+defeat Joshro, you propose to Olivia, and she says yes with tears in her eyes as you both hug. Many years go by, and a family of three is formed, with the new addition to it being your son Matthew. \n\
+One day, Matthew tells you privately that he wishes to go out and stop the tyrant serpent Tylo from taking over a kingdom several oceans away, but informs you that Olivia is aggressively against this. \n\
+Remembering how you met her in the first place, you smile and tell him to leave in the middle of the night and 'follow your dreams', just as you did so long ago... \n\
+YOU GOT THE 'Unwidowing the widow' ENDING! (3 out of 4)"
+endingFourHappens = "After stopping Joshro dead in his tracks (hah, get it?), you and Misty begin the long trek back to her kingdom. While on the trip, you discover that there's more to Misty than her intense beauty, and \n\
+find that she's actually a really smart girl that aims to study international affairs at the college level. Her studious nature, among other cherished traits, makes you start to fall for her. \n\
+The night before you're expected to reach her kingdom, you profess your love to her, and she confesses her love for you as well. The arranged marriage she was supposed to end the next day was changed to one that she had \n\
+complete control over, and, as expected, she chooses to marry you. The wedding is magical for both of you, and, because of how marriage directly influences who becomes king and queen, you become the next king of her kingdom! \n\
+The next decades become one of the most prosperous times in the kingdom, and the public regard you as one of the best kings they've ever had. \n\
+Sitting one day in the royal court, a young but hardy man asks you for a small amount of money, and states that his intentions with the money will be to discover new lands and put an end to injustice all over the world. \n\
+Your advisors laugh him off, but you retain your steady gaze and approve the man's request, basking in the nostalgia of a time when you knew a man that also wanted to do good... \n\
+YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 
 
 
@@ -809,35 +840,6 @@ restart = True
 def main():
     global goblin, ogre, troll, rat, playerMaxHealth, playerCurrentHealth, allIn, strings, emptyStr, weapon, weaponChoice, restart, weaponStrength, potionTroll, \
     location, homeChosen, divByfour, morality, trackEndings
-    endingOneHappens = "After slaying the dragon, you return Misty to her respective kingdom, and she thanks you profusely. Before you fully become content with your life, you remember \n\
-the promise you made to the goblin that you would come work for him to repay your debt (although you still scratch your head as to what exactly the *debt* is). Nevertheless, you are a man of your word, \n\
-and make the long trek to the goblin's farm, and find that the farm life isn't so bad when the person you're doing the farming for is so small in stature that a farm to him is like a small garden to you. \n\
-In addition to this, you actually find that the goblin, whose name is soon discovered to be Bilbo, is surprisingly very funny and witty, and you two get along splendidly. The farm life treats you very well, \n\
-and you decide to take up farming even after your servitude to Bilbo was fulfilled, selling various vegetables to travellers going on journeys of their own... \n\
-YOU GOT THE 'Man of your word' ENDING! (1 out of 4)"
-    endingTwoHappens = "After defeating Joshro, you bring Misty back to her palace, where a celebration is held in your name for bringing back the kingdom's beloved princess. After recuperating yourself from the \n\
-many nights of royal partying, you leave the kingdom in a great mood. While walking across an outrageously decrepit bridge, you remember Samantha and the offer she made to you. Seeing how disgusting some bridges can be \n\
-without proper maintenance, you decide that bridge cleaning is the next endeavor you wish to undertake. Returning to Samantha's bridge, you see that she's already made several noticeable steps to \n\
-make her bridge look more approachable, which gives you the final push you need to really take this bridge thing seriously. For several years, you and Samantha work tirelessly to keep the bridge spotless, \n\
-and become great friends in the process. After Samantha leaves the bridge business to pursue a career in dramatic acting, you transform the bridge into a resting place for weary travellers to \n\
-to safely take shelter at while they go fight dragons and save princesses of their own... \n\
-YOU GOT THE 'Human troll' ENDING! (2 out of 4)"
-    endingThreeHappens = "After putting an end to Joshro's reign of terror, you and Misty travel back to her kingdom, and you get there just in time to see her get married, and start to feel a little bit empty. \n\
-This emptiness consumes you for the next couple of days while you head back to the cottage, and you struggle to put your finger on what exactly is bothering you so much. That is, until you and Olivia meet again. \n\
-The reunion fills you with an overwhelming sense of bliss, and you feel that emptiness become replaced with a new type of emotion- love. In the space of 8 years, you and Olivia open up a tavern, and your relationship with her \n\
-eventually shifts from a platonic one to one filled with golden memories and endless laughter, a sign of the increasingly apparent chemistry between you two. Then, on the tenth anniversary since you two met during your quest to \n\
-defeat Joshro, you propose to Olivia, and she says yes with tears in her eyes as you both hug. Many years go by, and a family of three is formed, with the new addition to it being your son Matthew. \n\
-One day, Matthew tells you privately that he wishes to go out and stop the tyrant serpent Tylo from taking over a kingdom several oceans away, but informs you that Olivia is aggressively against this. \n\
-Remembering how you met her in the first place, you smile and tell him to leave in the middle of the night and 'follow your dreams', just as you did so long ago... \n\
-YOU GOT THE 'Unwidowing the widow' ENDING! (3 out of 4)"
-    endingFourHappens = "After stopping Joshro dead in his tracks (hah, get it?), you and Misty begin the long trek back to her kingdom. While on the trip, you discover that there's more to Misty than her intense beauty, and \n\
-find that she's actually a really smart girl that aims to study international affairs at the college level. Her studious nature, among other cherished traits, makes you start to fall for her. \n\
-The night before you're expected to reach her kingdom, you profess your love to her, and she confesses her love for you as well. The arranged marriage she was supposed to end the next day was changed to one that she had \n\
-complete control over, and, as expected, she chooses to marry you. The wedding is magical for both of you, and, because of how marriage directly influences who becomes king and queen, you become the next king of her kingdom! \n\
-The next decades become one of the most prosperous times in the kingdom, and the public regard you as one of the best kings they've ever had. \n\
-Sitting one day in the royal court, a young but hardy man asks you for a small amount of money, and states that his intentions with the money will be to discover new lands and put an end to injustice all over the world. \n\
-Your advisors laugh him off, but you retain your steady gaze and approve the man's request, basking in the nostalgia of a time when you knew a man that also wanted to do good... \n\
-YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
     morality = 0
     restart = False
     homeChosen = False
@@ -846,7 +848,7 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
     troll = random.randint(100,125)
     mutant = 120
     rat = random.randint(90,110)
-    playerMaxHealth = 100
+    playerMaxHealth = 150
     playerCurrentHealth = playerMaxHealth
     allIn = False
     potionTroll = False
@@ -869,12 +871,12 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 beautiful princess Misty from the evil dragon Joshro. Your story begins at the village \n\
 blacksmith, where you must decide what kind of weapon you will bring with you \n\
 on your journey.")
-    time.sleep(5)
+    #time.sleep(5)
     weaponChoice = input("Do you take a 'bow', 'axe', or 'sword'?: ")
     while weaponChoice != "bow" and weaponChoice != "axe" and weaponChoice != "sword":
         weaponChoice = input("That weapon isn't here! Do you take a 'bow', 'axe', or 'sword'?: ")
     weaponSelect()
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -913,14 +915,14 @@ on your feet and pull out your weapon.")
             if restart:
                 return
             allIn = True
-    time.sleep(5)        
+    #time.sleep(5)        
     print(" ")
     print("++++++++++++++++")
     print(" ")
     deadlyTreasure()
     if restart:
         return
-    time.sleep(5)    
+    #time.sleep(5)    
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1007,7 +1009,7 @@ You're able to get up, but because of the surprise attack, you've lost valuable 
                     if restart:
                         return
                     allIn = True
-    time.sleep(5)                
+    #time.sleep(5)                
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1021,7 +1023,7 @@ You're able to get up, but because of the surprise attack, you've lost valuable 
     riverEscape()
     if restart:
         return
-    time.sleep(5)    
+    #time.sleep(5)    
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1038,14 +1040,14 @@ You're able to get up, but because of the surprise attack, you've lost valuable 
     while caveWatchtower != "cave" and caveWatchtower != "watchtower":
         caveWatchtower = input("That won't work this time! Do you take shelter in the 'cave' or the 'watchtower'? ")
     if caveWatchtower == "cave":
-        playerMaxHealth, potionTroll = cave(playerMaxHealth)
+        potionTroll = cave()
     if caveWatchtower == "watchtower": 
         watchTower()
     if caveWatchtower == "cave":
         print("You leave the cave, and trek on towards the increasingly visible castle.")
     elif caveWatchtower == "watchtower":
         print("You exit the watchtower, and trek on towards the increasingly visible castle.")
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1113,7 +1115,7 @@ make her even more angry, which doesn't help things in the slightest. You ready 
         if restart:
             return
         allIn = True
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1131,7 +1133,7 @@ make her even more angry, which doesn't help things in the slightest. You ready 
     else:
         print(introMessages[5])
     castleEntrance()
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1168,7 +1170,10 @@ In one of the drawers, you find a damaged note that warns its readers to be wear
     elif x == "inn":
         print("Once inside the inn, you eat a hearty meal in the lobby before purchasing a room. As you walk past the many rooms, an old and disheveled man grabs you and warns you to stay weary of the \n\
 'Dragon's Devils'. You push the man off you and hurry to your room. The man's words still linger in your mind, but you shut them off and go to sleep begrudgingly.")
-    time.sleep(5)
+    
+    playerCurrentHealth = playerMaxHealth
+
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1193,12 +1198,12 @@ but this definitely takes the cake. You dust yourself off, and resume walking ar
         allIn = True
     if restart:
         return
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
     codeFind()
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1232,21 +1237,34 @@ past the default 100 value, you might not be able to outrun the rambunctious rod
     elif outrunFight == "outrun":
         print("You decide to try your luck and athletic skills by ceasing to fight the rat and instead violently thrash through the water \n\
 to attempt to reach a safe distance.")
-        if playerMaxHealth > 100:
+        if playerCurrentHealth > 100:
             print("You end up creating such a large distance between you and the rodent that it eventually just gives up and waddles away in the other direction.")
             emptyStr, strings = stringWord(emptyStr)
-        elif playerMaxHealth <= 100:
+        elif playerCurrentHealth <= 50:
             fastNot = random.randint(1,2)
             if fastNot == 1:
                 print("Despite your determination in trying to outrun the creature, it catches up to you and drags you down to the murky depths... \n\
 and you never resurface.")
                 end()
                 return
-            if fastNot == 2:
+            else:
                 print("In a surprising turn of events, you manage to wade quickly enough away from the rat that it decides that you're not worth the trouble, \n\
 and waddles away in the other direction.")
                 emptyStr, strings = stringWord(emptyStr)
-    time.sleep(5)
+        else:
+            fastNot = random.randint(1,2)
+            if fastNot == 1:
+                print("Despite your determination in trying to outrun the creature.\n\
+However, it doesn't fully defeat you when it catches up with you, and as such you are forced to fight it.")
+                playerCurrentHealth -= 50
+                fightSequence(rat, location)
+                if restart:
+                    return
+                allIn = True
+            else:
+                print("In a surprising turn of events, you manage to wade quickly enough away from the rat that it decides that you're not worth the trouble, \n\
+and waddles away in the other direction.")
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1258,7 +1276,7 @@ intricately designed mathematical padlock that protects a metal box. You read a 
     randomNumtosolve(random.choice(divByfour))
     print("You complete the puzzle, and unlock the box to find the key you need. You exit the main watchtower without arousing suspicion from the nearby mutants, \n\
 and continue on your way to the armory.")
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1267,7 +1285,7 @@ appearance, and, in addition to that, offers more protection.")
     playerMaxHealth += 50
     print("Approaching the keep, you see a human guard ahead that won't move no matter what distractions you use to guide him away. After some impatient waiting, you conclude \n\
 that the only way to enter the keep is through a direct encounter with the guard. A fight is inevitable, but the only question now is *how* the interaction with the guard will end...")
-    morality = guardFightsequence(playerMaxHealth)
+    morality = guardFightsequence()
     if restart:
         return
     if morality == 2:
@@ -1288,7 +1306,7 @@ You nod in agreement, and enter the keep, where the evil Joshro and precious Mis
 He also makes you promise to give him a substantial amount of the riches located inside the keep as compensation for his support. You nod in agreement, and enter the keep, where the evil Joshro and precious Misty are located... ")
             guardHelpNot = True
         emptyStr, strings = stringWord(emptyStr)
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1297,7 +1315,7 @@ To enter the next room you first need to speak to the receptionist, who happens 
 but because pig latin is not really in fashion anymore, you struggle to decipher what he's saying, and must employ the use of writing to help \n\
 you conversate better.")
     pigLanguage()
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1349,23 +1367,23 @@ You drink it, and bask in the glory that is being a nonviolent person before hea
     elif len(emptyStr) < 6:
         print("You weren't a pacifist! The sorcerer sighs, but because you're mad at the sorcerer for not giving you a chance, you try to attack him. The sorcerer teleports away just in time, and you hit the wall \n\
 with your sword in anger. After hitting the wall a couple more times just for good measure, you head to the door separating you from Misty and Joshro...")
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
     if guardHelpNot != True or guardAlive != True:
-        finalFight(playerMaxHealth)
+        finalFight()
         if restart:
             return
         trackEndings.append("Do you want to stick with Misty?")
         endingFour = True
     else:
-        finalFightGuard(playerMaxHealth)
+        finalFightGuard()
         if restart:
             return
         trackEndings.append("Do you want to stick with Misty?")
         endingFour = True
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1389,7 +1407,7 @@ with your sword in anger. After hitting the wall a couple more times just for go
                 print(" ")
                 print(endingFourHappens)
                 endingChosen = True
-    time.sleep(5)
+    #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1401,56 +1419,56 @@ with your sword in anger. After hitting the wall a couple more times just for go
         print("This game took me a little bit under 2 months to make, and it was definitely a rollercoaster \n\
 of hating programming and loving it, but I'd just like to say a couple quick things about some of the people who helped/supported me through \n\
 the development process... ") 
-        time.sleep(5)
+        #time.sleep(5)
         print(" ")
         print("The first person I'd like to thank is God for allowing me to be here and have the experience to be able to make such a cool game, as well as allowing me to meet wonderful people \n\
 like Jasun, Jordan, Corbin, and other people I'd consider friends:)")
-        time.sleep(5)
+        #time.sleep(5)
         print(" ")
         print("The next person is, of course, Jasun, for two very good reasons. First and foremost, without Jasun pushing me to constantly upgrade and continue learning Python as well as \n\
 making the game itself, this game would've never been completed. Him helping me get through tricky lines of code is the second reason, as many of the things you experience throughout the game, \n\
 such as the pig latin challenge and the normal fight scenes, wouldn't have functioned properly or at all without his advice. All in all, I'd like to thank Jasun for allowing me to do a project that I \n\
 genuinely enjoyed working on (for most of the time at least), as well as helping me explore programming in general, as it is something I definitely want to pursue as a future career.")
-        time.sleep(5)
+        #time.sleep(5)
         print(" ")
         print("For the next person, I'm actually going to thank two people- those two people being Jordan and Corbin. When Jasun was busy helping other people out or was stumped about something \n\
 concerning my code, Jordan and Corbin, without hesitation, always came to my aid to help me solve whatever issue was plagueing my code. Without them and their \n\
 Albert Einstein-like brains, a substantial portion of this game would not be possible:)")
-        time.sleep(5)
+        #time.sleep(5)
         print(" ")
         print("Ok because there are a bunch of other people on my list that deserve paragraphs of their own, but also because I don't want this game to be like a million lines of code, I'm going to sum up the other people very quickly:")
-        time.sleep(5)
+        #time.sleep(5)
         print("MICHELLE, for being supportive of my interest in coding even through tough times:)")
-        time.sleep(5)
+        #time.sleep(5)
         print("~~~~~~~~~~~~~~~~")
         print("LUKE, for showing a genuine interest in seeing my game be completed and even asking questions regarding the nerdy mechanics of what certain stuff did inside the code:)")
-        time.sleep(5)
+        #time.sleep(5)
         print("~~~~~~~~~~~~~~~~")
         print("VICTORY, for being the person I could have a good laugh with when programming annoyed me and I needed a break:)")
-        time.sleep(5)
+        #time.sleep(5)
         print("~~~~~~~~~~~~~~~~")
         print("DANNY, for being interested in playing my game once it was finished, as well as making ultimate frisbee be super fun and rewarding after doing a bunch of typing the Wednesday before in STEAM Club:)")
-        time.sleep(5)
+        #time.sleep(5)
         print("~~~~~~~~~~~~~~~~")
         print("DOUG, CAITLIN, BENNY, and JEFF, for letting me leave their classes early so I could work on my game:)")
-        time.sleep(5)
+        #time.sleep(5)
         print("~~~~~~~~~~~~~~~~")
         print("MORGAN, ELIZABETH, LUKAS, and GENEVIEVE, for being pretty cool people and keeping my mental state at a good place while \n\
 personal issues were taking place that could've definitely sunk my drive to finish making the game, \n\
 as well as showing interest in wanting to play my game once it was finished:)")
-        time.sleep(5)
+        #time.sleep(5)
         print("~~~~~~~~~~~~~~~~")
         print("JASUN, LUKE, CHARLOTTE, NOX, JORDAN, CORBIN, MORGAN, SHEPARD, BENNY, LUKAS, and many others for playtesting the game!:)")
-        time.sleep(5)
+        #time.sleep(5)
         print("~~~~~~~~~~~~~~~~")
         print("And lastly, YOU, the player, whoever you are, for beating my broken but meaningful mess of a game!:)")
-        time.sleep(5)
+        #time.sleep(5)
         print(" ")
         print("++++++++++++++++")
         print(" ")
         print("If you're curious about what the '(NUMBER out of 4)' means next to the name of the ending you got, try playing the game again and find out what would happen if you did things differently!:)")
     else:
-        time.sleep(5)
+        #time.sleep(5)
         print(" ")
         print("++++++++++++++++")
         print(" ")
