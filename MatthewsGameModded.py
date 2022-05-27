@@ -804,10 +804,62 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 
 
 
+class Attack:
+    damage : int
+    randomness : int
+    length : int
+    timeSinceStart : int
+    name : str
+
+    def __init__(self, damage : int, randomness : int, length : int, name : int):
+        self.damage = damage
+        self.length = length
+        self.name = name
+        self.timeSinceStart = 0
+
+    def RollDamage(self):
+        return max(0, random.randint(self.damage - self.randomness, self.damage + self.randomness))
 
 
 
 
+class Enemy:
+    health : int
+    activeAttack : int
+    attacks : Attack
+    name : str
+
+    def __init__(self, health, attacks : Attack, name : str):
+        self.health = health
+        self.activeAttack = 0
+        self.attacks = attacks
+        self.name = name
+
+    def CurrentAttack(self):
+        return self.attacks[self.activeAttack]
+
+    def FindNewAttack(self):
+        self.activeAttack = random.randint(0, len(self.attacks) - 1)
+
+    def FirstTurn(self):
+        self.FindNewAttack()
+
+    def TakeTurn(self):
+        damage = 0
+
+        if self.CurrentAttack().length == self.CurrentAttack().timeSinceStart:
+            damage = self.CurrentAttack().RollDamage()
+
+            print(self.name + " does " + self.CurrentAttack().name + " and this attack deals " + str(damage))
+
+            self.FindNewAttack()
+            print("And " + self.name + " starts preparing " + self.attacks[self.activeAttack])
+
+
+        else:
+            self.attacks[self.activeAttack].timeSinceStart += 1
+
+        return damage
 
 
 
