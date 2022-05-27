@@ -1396,6 +1396,7 @@ you crack your knuckles and massage your forehead in preparation for the mind-nu
             print("You got it! The sorcerer smiles with admiration as he hands you the obviously enlarged and luxurious potion full of fizzling bubbles. \n\
 You drink it, and bask in the glory that is being a nonviolent person before heading to the door separating you from the girl you came to save and the unjust creature you must stop...")
             playerMaxHealth += 100
+            playerCurrentHealth = playerMaxHealth
             stringCorrect = True
         else:
             print("******")
@@ -1407,6 +1408,7 @@ You drink it, and bask in the glory that is being a nonviolent person before hea
                 print("You got it! The sorcerer smiles with admiration as he hands you the obviously enlarged and luxurious potion full of fizzling bubbles. \n\
     You drink it, and bask in the glory that is being a nonviolent person before heading to the door separating you from the girl you came to save and the unjust creature you must stop...")
                 playerMaxHealth += 100
+                playerCurrentHealth = playerMaxHealth
                 stringCorrect = True
             else:
                 print("******")
@@ -1418,6 +1420,7 @@ You drink it, and bask in the glory that is being a nonviolent person before hea
                 print("You got it! The sorcerer smiles with admiration as he hands you the obviously enlarged and luxurious potion full of fizzling bubbles. \n\
 You drink it, and bask in the glory that is being a nonviolent person before heading to the door separating you from the girl you came to save and the unjust creature you must stop...")
                 playerMaxHealth += 100
+                playerCurrentHealth = playerMaxHealth
                 stringCorrect = True
             elif askString != "string":
                 print("You didn't guess the word, and sulk about it before heading to the door separating you from the girl you came to save and the tyrannical creature you must defeat...")
