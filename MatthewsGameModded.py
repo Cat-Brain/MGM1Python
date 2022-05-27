@@ -1249,8 +1249,12 @@ and you never resurface.")
                 return
             else:
                 print("In a surprising turn of events, you manage to wade quickly enough away from the rat that it decides that you're not worth the trouble, \n\
-and waddles away in the other direction.")
+and waddles away in the other direction. In the process though you did cut your knee on a rock.")
                 emptyStr, strings = stringWord(emptyStr)
+                if playerCurrentHealth > 25:
+                    playerCurrentHealth -= 25
+                else:
+                    playerCurrentHealth = max(1, min(10, playerCurrentHealth - 10))
         else:
             fastNot = random.randint(1,2)
             if fastNot == 1:
@@ -1263,7 +1267,8 @@ However, it doesn't fully defeat you when it catches up with you, and as such yo
                 allIn = True
             else:
                 print("In a surprising turn of events, you manage to wade quickly enough away from the rat that it decides that you're not worth the trouble, \n\
-and waddles away in the other direction.")
+and waddles away in the other direction. In the process though your knee got cut by a rock.")
+                playerCurrentHealth -= 25
     #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
