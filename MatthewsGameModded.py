@@ -6,6 +6,8 @@ I hope that you enjoy this experience, and if you want, maybe you'll even mod th
 """
 
 from copy import deepcopy # This lets us pass lists that aren't references.
+from enum import Enum # This lets me use enum classes, and they look nice. =]
+from math import *
 import random
 import time
 
@@ -24,6 +26,62 @@ import time
 
 
 #Classes:
+
+class InflictionType(Enum):
+    POISON = 0
+    BLEED = 1
+    DEADLY_HUG = 2
+    BURNING = 3
+    #Insert more status effects here.
+
+
+
+class Infliction:
+    effect : InflictionType
+
+    def __init__(self, effect : InflictionType):
+        self.effect = effect
+
+    def FindDamage(self):
+        match self.effect:
+            case InflictionType.POISON:
+                return 2
+            case InflictionType.BLEED:
+                return 3
+            case InflictionType.DEADLY_HUG:
+                return 1
+            case InflictionType.BURNING:
+                return 10
+
+    def DeathDamage(self):
+        match self.effect:
+            case InflictionType.POISON:
+                return 2
+            case InflictionType.BLEED:
+                return 1
+            case InflictionType.DEADLY_HUG:
+                return 10
+            case InflictionType.BURNING:
+                return 5
+
+
+
+class StatusEffect:
+    effect : Infliction
+    durationLeft : int
+
+    def __init__(self, effect : Infliction, duration : int):
+        self.effect = effect
+        self.durationLeft = duration
+
+    def Update(self):
+        self.durationLeft -= 1
+        if self.durationLeft <= 0:
+            return False, self.effect.DeathDamage()
+        return True, self.effect.FindDamage()
+            
+
+
 
 class Hit:
     damage : int
@@ -72,10 +130,7 @@ class Enemy:
         self.attacks[self.activeAttack].timeSinceStart = 0
         self.activeAttack = random.randint(0, len(self.attacks) - 1)
         self.attacks[self.activeAttack].timeSinceStart = 1
-
-    def FirstTurn(self):
-        self.FindNewAttack()
-        print(self.name + " starts preparing " + self.CurrentAttack().name)
+        print(self.name + " starts preparing " + self.CurrentAttack().name + " It'll be done in " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart + 1) + " turns.")
 
     def TakeTurn(self):
         hit : Hit
@@ -89,19 +144,18 @@ class Enemy:
                 print(self.name + " misses.")
 
             self.FindNewAttack()
-            print("Then " + self.name + " starts preparing " + self.CurrentAttack().name)
 
 
         else:
             hit = Hit(0)
-
-        self.attacks[self.activeAttack].timeSinceStart += 1
+            print(self.name + " continues to prepare their " + self.name + "'s " + self.CurrentAttack().name + " They have " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart) + " turns left.")
+            self.attacks[self.activeAttack].timeSinceStart += 1
 
         return hit
 
 
 
-class Weapon:
+class Player:
     activeAttack : int
     attacks : Attack
     name : str
@@ -118,6 +172,8 @@ class Weapon:
         self.attacks[self.activeAttack].timeSinceStart = 0
         self.activeAttack = newAttack
         self.attacks[self.activeAttack].timeSinceStart = 1
+        print("Max starts preparing " + self.CurrentAttack().name + " It'll be done in " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart + 1) + " turns.")
+
 
     def SwitchWeapons(self, startingText : str):
             turnDialogue = startingText + "'" + self.attacks[0].name + "' "
@@ -152,7 +208,8 @@ class Weapon:
                 print("Max uses their " + self.name + " and does " + self.CurrentAttack().name + ". This attack deals " + str(hit.damage))
             else:
                 print("Max's " + self.name + " misses.")
-                self.attacks[self.activeAttack].timeSinceStart += 1
+            
+            self.attacks[self.activeAttack].timeSinceStart = 0
 
 
         else:
@@ -403,7 +460,8 @@ def fightSequenceOld(enemy, location):
 
 
 
-def fightSequence(enemies : Enemy, location):       
+def fightSequence(enemies : Enemy, location):
+    enemiesC = deepcopy(enemies) # The C in enemiesC stands for copy.       
     global playerCurrentHealth, currentWeapon
 
     fightOn = True
@@ -412,13 +470,13 @@ def fightSequence(enemies : Enemy, location):
     while fightOn: 
 
         print("")
-        print(enemies[0].name + "'s health: " + str(enemies[0].health)) 
+        print(enemiesC[0].name + "'s health: " + str(enemiesC[0].health)) 
         print("Max's health: ", playerCurrentHealth)
         print("")
 
         if fightFrameOne:
             fightFrameOne = False
-            enemies[0].FirstTurn()
+            enemiesC[0].FindNewAttack()
             currentWeapon.SwitchWeapons("Do you want to use ")
 
             
@@ -430,17 +488,18 @@ def fightSequence(enemies : Enemy, location):
 
 
         if prompt == "dodge":
-            enemyHit = enemies[0].TakeTurn()
-            playerCurrentHealth -= int(enemyHit.damage / random.randint(1, 4))
-            print("You dodged the attack and took " + str(enemyHit.damage) + " damage!")
+            enemyHit = enemiesC[0].TakeTurn()
+            damageDelt = floor(enemyHit.damage / 2)
+            playerCurrentHealth -= damageDelt
+            print("You dodged the attack and took " + str(damageDelt) + " instead of taking " + str(enemyHit.damage) + " damage!")
         
 
         elif prompt == "attack":
-            enemyHit = enemies[0].TakeTurn()
+            enemyHit = enemiesC[0].TakeTurn()
             playerCurrentHealth -= enemyHit.damage
 
             playerHit = currentWeapon.TakeTurn()
-            enemies[0].health -= playerHit.damage
+            enemiesC[0].health -= playerHit.damage
 
 
         else:
@@ -449,7 +508,7 @@ def fightSequence(enemies : Enemy, location):
             
 
         fightOn = playerCurrentHealth > 0
-        for enemy in enemies:
+        for enemy in enemiesC:
             fightOn = fightOn and enemy.health > 0
 
 
@@ -1154,7 +1213,7 @@ def main():
     playerMaxHealth = 150
     playerCurrentHealth = playerMaxHealth
     allIn = False
-    currentWeapon = Weapon([clubBash, heavyJab], "Ogre in a bottle")
+    currentWeapon = Player([clubBash, heavyJab], "Ogre in a bottle")
     potionTroll = False
     homeChosen = False
     divByfour = [8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]
