@@ -5,8 +5,180 @@ however this all wouldn't of existed without Matthew's original version of the g
 I hope that you enjoy this experience, and if you want, maybe you'll even mod this mod! =]
 """
 
+from copy import deepcopy # This lets us pass lists that aren't references.
 import random
 import time
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Classes:
+
+class Hit:
+    damage : int
+
+    def __init__(self, damage : int):
+        self.damage = damage
+
+
+
+class Attack:
+    damage : int
+    damageRand : int
+    randomness : int
+    length : int
+    timeSinceStart : int
+    name : str
+
+    def __init__(self, damage : int, damageRand : int, length : int, name : int):
+        self.damage = damage
+        self.damageRand = damageRand
+        self.length = length
+        self.name = name
+        self.timeSinceStart = 0
+
+    def RollDamage(self):
+        return Hit(random.randint(self.damage - self.damageRand, self.damage + self.damageRand))
+
+
+
+class Enemy:
+    health : int
+    activeAttack : int
+    attacks : Attack
+    name : str
+
+    def __init__(self, health, attacks : Attack, name : str):
+        self.health = health
+        self.activeAttack = 0
+        self.attacks = deepcopy(attacks)
+        self.name = name
+
+    def CurrentAttack(self):
+        return self.attacks[self.activeAttack]
+
+    def FindNewAttack(self):
+        self.attacks[self.activeAttack].timeSinceStart = 0
+        self.activeAttack = random.randint(0, len(self.attacks) - 1)
+        self.attacks[self.activeAttack].timeSinceStart = 1
+
+    def FirstTurn(self):
+        self.FindNewAttack()
+        print(self.name + " starts preparing " + self.CurrentAttack().name)
+
+    def TakeTurn(self):
+        hit : Hit
+
+        if self.CurrentAttack().length <= self.CurrentAttack().timeSinceStart:
+            hit = self.CurrentAttack().RollDamage()
+            if hit.damage != 0:
+                print(self.name + " does " + self.CurrentAttack().name + ". This attack deals " + str(hit.damage))
+
+            else:
+                print(self.name + " misses.")
+
+            self.FindNewAttack()
+            print("Then " + self.name + " starts preparing " + self.CurrentAttack().name)
+
+
+        else:
+            hit = Hit(0)
+
+        self.attacks[self.activeAttack].timeSinceStart += 1
+
+        return hit
+
+
+
+class Weapon:
+    activeAttack : int
+    attacks : Attack
+    name : str
+
+    def __init__(self, attacks : Attack, name : str):
+        self.activeAttack = 0
+        self.attacks = deepcopy(attacks)
+        self.name = name
+
+    def CurrentAttack(self):
+        return self.attacks[self.activeAttack]
+
+    def ChangeAttackTo(self, newAttack : int):
+        self.attacks[self.activeAttack].timeSinceStart = 0
+        self.activeAttack = newAttack
+        self.attacks[self.activeAttack].timeSinceStart = 1
+
+    def SwitchWeapons(self, startingText : str):
+            turnDialogue = startingText + "'" + self.attacks[0].name + "' "
+            for attack in range(len(self.attacks) - 1):
+                turnDialogue += "or '" + self.attacks[attack + 1].name + "' "
+
+            prompt = input(turnDialogue)
+
+            inputedAttack = 0
+
+            badInput = True
+            for currentAttack in range(len(self.attacks)):
+                if prompt == self.attacks[currentAttack].name:
+                    badInput = False
+                    inputedAttack = currentAttack
+
+            while badInput:
+                prompt = input("That won't work this time! Do you want to " + turnDialogue)
+                for currentAttack in range(len(self.attacks)):
+                    if prompt == self.attacks[currentAttack].name:
+                        badInput == False
+                        inputedAttack = currentAttack
+            
+            self.ChangeAttackTo(inputedAttack)
+
+    def TakeTurn(self):
+        hit : Hit
+
+        if self.CurrentAttack().length <= self.CurrentAttack().timeSinceStart:
+            hit = self.CurrentAttack().RollDamage()
+            if hit.damage != 0:
+                print("Max uses their " + self.name + " and does " + self.CurrentAttack().name + ". This attack deals " + str(hit.damage))
+            else:
+                print("Max's " + self.name + " misses.")
+                self.attacks[self.activeAttack].timeSinceStart += 1
+
+
+        else:
+            hit = Hit(0)
+            print("Max continues to prepare their " + self.name + "'s " + self.CurrentAttack().name + " They have " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart) + " turns left.")
+
+        self.attacks[self.activeAttack].timeSinceStart += 1
+
+        return hit
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def weaponSelect(): 
@@ -30,11 +202,19 @@ They're quick weapons that damage your enemies for short amounts of time upon hi
         weaponStrength = 10 
         print("A steel longsword.\n\
 It does hight damage, but it can only hit 1 foe at a time.")  
+
+
+
+
 def end(): 
     print("You have been slain.") 
     enter = input("Press 'enter' on your keyboard to start a new game:)") 
     global restart
     restart = True
+
+
+
+
 def codeFind():
     print("After your fight with the mutant, you realize how dire the situation is, and sit on a bench to think about your next move \n\
 very carefully. All this worry has got you very stressed out, so to alleviate that, you make a stop by the local library to pick up a good read. \n\
@@ -87,6 +267,10 @@ Revived by this sudden revelation that could help you save Misty, you get comfor
                     continue
     print("You piece the code together, and find that the completed code is 'sewer look there hurry'. You exit the library, and hurry off \n\
 to the local sewer entrance to search for the secret entrance to the fortress where Misty is held.")
+
+
+
+
 def randomNumtosolve(number):
     playerNum = 0
     while playerNum < number:
@@ -115,6 +299,10 @@ of what the number is, and try to add up to the sum of it (keep in mind you'll h
             playerNum = 0
     if playerNum == number:
         print("You did it! Good job!")
+
+
+
+
 def guardFightsequence():
     global playerCurrentHealth
     guard = 150
@@ -164,7 +352,11 @@ and the guard hesitantly stops his attack to let you plead your case.")
             return
         if guard <= 0:
             print("The guard comes crashing to the ground, and you take pity on him as you open the doors to the keep, where Misty and the ferocious dragon are located...")
-def fightSequence(enemy, location):       
+
+
+
+
+def fightSequenceOld(enemy, location):       
     global playerCurrentHealth
     while enemy > 0 and playerCurrentHealth > 0: 
         print("Enemy's health: ", enemy) 
@@ -207,6 +399,76 @@ def fightSequence(enemy, location):
                 print(outroMessages[2])
             elif location == "sewers":
                 print(outroMessages[3])
+
+
+
+
+def fightSequence(enemies : Enemy, location):       
+    global playerCurrentHealth, currentWeapon
+
+    fightOn = True
+    fightFrameOne = True
+
+    while fightOn: 
+
+        print("")
+        print(enemies[0].name + "'s health: " + str(enemies[0].health)) 
+        print("Max's health: ", playerCurrentHealth)
+        print("")
+
+        if fightFrameOne:
+            fightFrameOne = False
+            enemies[0].FirstTurn()
+            currentWeapon.SwitchWeapons("Do you want to use ")
+
+            
+
+        prompt = input("'dodge' or 'attack' to continue your current attack or 'switch' your attack? ")
+
+        while prompt != "dodge" and prompt != "attack" and prompt != "switch":
+            prompt = input("That won't work this time! Do you want to 'dodge' or 'attack' to continue your current attack or 'switch' your attack? ")
+
+
+        if prompt == "dodge":
+            enemyHit = enemies[0].TakeTurn()
+            playerCurrentHealth -= int(enemyHit.damage / random.randint(1, 4))
+            print("You dodged the attack and took " + str(enemyHit.damage) + " damage!")
+        
+
+        elif prompt == "attack":
+            enemyHit = enemies[0].TakeTurn()
+            playerCurrentHealth -= enemyHit.damage
+
+            playerHit = currentWeapon.TakeTurn()
+            enemies[0].health -= playerHit.damage
+
+
+        else:
+            currentWeapon.SwitchWeapons("")
+
+            
+
+        fightOn = playerCurrentHealth > 0
+        for enemy in enemies:
+            fightOn = fightOn and enemy.health > 0
+
+
+    if playerCurrentHealth <= 0: 
+        end()
+        return
+    else:
+        if location == "village": 
+            print(outroMessages[0]) 
+        elif location == "forest": 
+            print(outroMessages[1]) 
+        elif location == "old bridge":
+            print(outroMessages[2])
+        elif location == "sewers":
+            print(outroMessages[3])
+
+
+
+
 def finalFight():
     global playerCurrentHealth
     print("You open the doors to find Misty tied up to a pole, surrounded by a lake of acidic stuff that you don't even think about messing with. SUDDENLY, \n\
@@ -326,6 +588,10 @@ so that Joshro's reign of terror can end once and for all...")
     print("With a thunderous crash, Joshro falls lifeless to the ground with an intense thump. Misty, overjoyed that she's finally been saved, \n\
 falls into your arms, and you sit on the ground to take a breather. \n\
 You did it! You slayed the dragon and saved the girl, but there are still things you must take care of...")
+
+
+
+
 def finalFightGuard():
     global playerCurrentHealth
     print("You open the doors to find Misty tied up to a pole, surrounded by a lake of acidic stuff that you don't even think about messing with. SUDDENLY, \n\
@@ -519,6 +785,10 @@ so that Joshro's reign of terror can end once and for all...")
     print("With a thunderous crash, Joshro falls lifeless to the ground with an intense thump. Misty, overjoyed that she's finally been saved, \n\
 falls into your arms, and you sit on the ground to take a breather. \n\
 You did it! You slayed the dragon and saved the girl, but there are still things you must take care of...")
+
+
+
+
 def deadlyTreasure():
     global playerMaxHealth, playerCurrentHealth
     print("While walking through the forest, you come across a golden box \n\
@@ -543,6 +813,10 @@ that increases your health by 50. You drink it, and continue along the path.")
         print("You decide it's not worth the risk, and continue walking on the \n\
 road.") 
     return
+
+
+
+
 def pigLanguage():
     print(" ")
     print("The pig says, 'Atwhay isyay ouryay amenay?' ")
@@ -563,6 +837,10 @@ def pigLanguage():
 *Are* you the person that's supposed to be giving Joshro his daily massage(hint: you should *probably* say yes)? ")
     print(" ")
     print("You finish checking in with the pig, and enter the next chamber, eager to advance to the second to last stage of your journey.")
+
+
+
+
 def riverEscape():
     stepsYes = random.randint(21,30)
     print("You reach a river that could separate you from the ferocious carnivores, if you can reach the other side \n\
@@ -593,6 +871,10 @@ sigh of relief as you sit back and watch the werewolves cower in fear from the r
 The werewolves close in swiftly, and you and the fisherman become a hungry family's next meal.")
         end()
         return 
+
+
+
+
 def castleEntrance():
     stick = False
     placeholder = False
@@ -627,6 +909,10 @@ next to the gate.")
     print("Hearing the gears churn inside the gate's various mechanisms, you take this as a good sign as you see the gate slowly open. \n\
 Huzzah! The gate has opened and you finally come to the last part of your journey... or so you think;)")
     return placeholder, stick, tree, shed, stable
+
+
+
+
 def stringWord(emptyStr):
     letter = random.choice(strings)
     strings.remove(letter)
@@ -635,6 +921,9 @@ def stringWord(emptyStr):
     print(emptyStr)
     print("******")
     return emptyStr, strings
+
+
+
 #Two functions in relation to the "caveWatchtower" scene
 def cave():
     global playerMaxHealth
@@ -679,6 +968,10 @@ to store it in your pack for later use. You have a dream that a large green crea
 safe passage across a path, but brush it off as your mind playing tricks on you and have a pretty uneventful rest of the night.")
         potionTroll = True
         return potionTroll
+
+
+
+
 def swordPull():
     grunt = ["guh", "gurr", "rawr"]
     correct = True
@@ -713,6 +1006,10 @@ uneventful, and you wake up feeling strangely refreshed after having that small 
     pythonrandWepstrength = random.randint(0,100)
     weaponStrength = pythonrandWepstrength
     return weaponStrength
+
+
+
+
 def watchTower():
     print("You enter the grey space, and find the area surprisingly empty, save for a single longsword of strikingly amazing quality. \n\
 The only issue is the fact that the sword is coincidentally stuck in a slab of stone. You've seen this somewhere before, and know that \n\
@@ -729,6 +1026,10 @@ you must alternate between 'guh', 'gurr', and 'rawr'.")
     if tryAvoid == "avoid":
         print("You decide that your rest is more important than something that almost certainly seems as if it could be useful to you, \n\
 and go to sleep restlessly on the cold hard floor.")
+
+
+
+
 def home():
     global homeChosen
     if homeChosen == False:
@@ -740,6 +1041,10 @@ def home():
 # def comingHome():
 #     print("You return to the",x)
 # comingHome()
+
+
+
+
 introMessages = ["As you walk past the village tavern, a drunken ogre unfortunately \
 mistakes you for the same villager that stole his favorite gold coin, \
 and pulls out his rusty dagger to take it back.", "After walking through the forest some more, you come across a \
@@ -804,62 +1109,6 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 
 
 
-class Attack:
-    damage : int
-    randomness : int
-    length : int
-    timeSinceStart : int
-    name : str
-
-    def __init__(self, damage : int, randomness : int, length : int, name : int):
-        self.damage = damage
-        self.length = length
-        self.name = name
-        self.timeSinceStart = 0
-
-    def RollDamage(self):
-        return max(0, random.randint(self.damage - self.randomness, self.damage + self.randomness))
-
-
-
-
-class Enemy:
-    health : int
-    activeAttack : int
-    attacks : Attack
-    name : str
-
-    def __init__(self, health, attacks : Attack, name : str):
-        self.health = health
-        self.activeAttack = 0
-        self.attacks = attacks
-        self.name = name
-
-    def CurrentAttack(self):
-        return self.attacks[self.activeAttack]
-
-    def FindNewAttack(self):
-        self.activeAttack = random.randint(0, len(self.attacks) - 1)
-
-    def FirstTurn(self):
-        self.FindNewAttack()
-
-    def TakeTurn(self):
-        damage = 0
-
-        if self.CurrentAttack().length == self.CurrentAttack().timeSinceStart:
-            damage = self.CurrentAttack().RollDamage()
-
-            print(self.name + " does " + self.CurrentAttack().name + " and this attack deals " + str(damage))
-
-            self.FindNewAttack()
-            print("And " + self.name + " starts preparing " + self.attacks[self.activeAttack])
-
-
-        else:
-            self.attacks[self.activeAttack].timeSinceStart += 1
-
-        return damage
 
 
 
@@ -875,44 +1124,46 @@ class Enemy:
 
 
 
+#Variables and game:
 
+#Constant variables:
+#Attacks
+clubBash = Attack(25, 10, 3, "club bash")
+heavyJab = Attack(5, 5, 1, "heavy jab")
 
+#Weapons
 
+#Globalizing variables
 
-
-#GAME BEGINS AFTER HERE
-#GAME BEGINS AFTER HERE
-#Variables
-#Variables
-
-global goblin, ogre, troll, rat, playerMaxHealth, playerCurrentHealth, allIn, strings, emptyStr, weapon, weaponChoice, restart, weaponStrength, potionTroll, \
-location, homeChosen, divByfour, morality, trackEndings
+global location, ogre, ogreOld, goblin, goblinOld, troll, mutant, rat, playerMaxHealth, playerCurrentHealth, allIn, weapon, currentWeapon, \
+weaponChoice, restart, weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr
 restart = True
 
 def main():
-    global goblin, ogre, troll, rat, playerMaxHealth, playerCurrentHealth, allIn, strings, emptyStr, weapon, weaponChoice, restart, weaponStrength, potionTroll, \
-    location, homeChosen, divByfour, morality, trackEndings
-    morality = 0
+    global location, ogre, ogreOld, goblin, goblinOld, troll, mutant, rat, playerMaxHealth, playerCurrentHealth, allIn, weapon, currentWeapon, \
+    weaponChoice, restart, weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr
+
     restart = False
-    homeChosen = False
-    goblin = random.randint(60,90)
-    ogre = random.randint(85,115)
+    ogre = Enemy(100, [clubBash, heavyJab], "Ogre")
+    ogreOld = random.randint(85,115)
+    goblin = Enemy(100, [clubBash, heavyJab], "Goblin")
+    goblinOld = random.randint(60,90)
     troll = random.randint(100,125)
     mutant = 120
     rat = random.randint(90,110)
     playerMaxHealth = 150
     playerCurrentHealth = playerMaxHealth
     allIn = False
+    currentWeapon = Weapon([clubBash, heavyJab], "Ogre in a bottle")
     potionTroll = False
-    #Two booleans for one level
-    stick = False
-    placeholder = False
-    divByfour = [8,12,16,20,24,28,32,36,40,44,48,52,56,60,64]
+    homeChosen = False
+    divByfour = [8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]
+    morality = 0
+    trackEndings = []
     strings = ["s", "t", "r", "i", "n", "g"]
     emptyStr = ""
     guardHelpNot = False
     guardAlive = False
-    trackEndings = []
     endingOne = False
     endingTwo = False
     endingThree = False
@@ -941,7 +1192,8 @@ on your journey.")
     while fightRun != "fight" and fightRun != "run":
         fightRun = input("That won't work this time! Do you want to 'fight' or 'run' away from the ogre? ") 
     if fightRun == "fight": 
-        fightSequence(ogre, location) 
+        fightSequence([ogre], location)
+        fightSequenceOld(ogreOld, location) 
         if restart:
             return
         allIn = True 
@@ -963,7 +1215,7 @@ to the village exit.")
             print("The ogre becomes enraged and slams you on the ground, howling \n\
 like a dog as he searches himself for the dagger he carries. You get back \n\
 on your feet and pull out your weapon.") 
-            fightSequence(ogre, location)
+            fightSequenceOld(ogreOld, location)
             if restart:
                 return
             allIn = True
@@ -987,7 +1239,7 @@ on your feet and pull out your weapon.")
     while fightPersuade != "fight" and fightPersuade != "persuade":
         fightPersuade = input("That won't work this time! Do you want to 'fight' or 'persuade' the goblin? ")
     if fightPersuade == "fight":
-        fightSequence(goblin, location)
+        fightSequenceOld(goblinOld, location)
         if restart:
             return
         allIn = True 
@@ -1018,7 +1270,7 @@ You're able to get up, but because of the surprise attack, you've lost valuable 
                 while goblinFight == True:
                     playerMaxHealth = int(playerMaxHealth/2)
                     weaponStrength = int(weaponStrength/2)
-                    fightSequence(goblin, location)
+                    fightSequenceOld(goblinOld, location)
                     playerMaxHealth = int(playerMaxHealth * 2) 
                     weaponStrength = int(weaponStrength * 2)
                     goblinFight = False
@@ -1054,7 +1306,7 @@ You're able to get up, but because of the surprise attack, you've lost valuable 
                     while goblinFight == True:
                         playerMaxHealth = int(playerMaxHealth/2)
                         weaponStrength = int(weaponStrength/2)
-                        fightSequence(goblin, location)
+                        fightSequenceOld(goblinOld, location)
                         playerMaxHealth = int(playerMaxHealth * 2) 
                         weaponStrength = int(weaponStrength * 2)
                         goblinFight = False
@@ -1151,7 +1403,7 @@ quietly to continue your journey.")
 you disrespect my bridge, and then you don't even give me something for my dehydration! This won't do! I'm going to have to teach you a lesson in manners!")
             print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
-            fightSequence(troll, location)
+            fightSequenceOld(troll, location)
             if restart:
                 return
             allIn = True
@@ -1163,7 +1415,7 @@ you blank out, and the troll notices this. 'WOW! So first you disrespect my brid
 This won't do! I'm going to have to teach you a lesson in manners!")
         print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
-        fightSequence(troll, location)
+        fightSequenceOld(troll, location)
         if restart:
             return
         allIn = True
@@ -1229,11 +1481,11 @@ In one of the drawers, you find a damaged note that warns its readers to be wear
     print(" ")
     print("++++++++++++++++")
     print(" ")
-    print("After leaving the",x,"in the morning, you turn the corner, but come face to face with a hideously disfigured mutant that shoves you to the ground before \n\
+    print("After leaving the", x, "in the morning, you turn the corner, but come face to face with a hideously disfigured mutant that shoves you to the ground before \n\
 exclaiming:'LeAvE, RiGhT nOw.' Obviously, you don't move, and the mutant spits on the ground before raising his axe to finish the job, but you quickly \n\
 dodge the attack and ready your weapon in retaliation.")
     location = "random street"
-    fightSequence(mutant, location)
+    fightSequenceOld(mutant, location)
     if restart:
         return
     spareKill = input("The mutant crashes to the ground, pleading with you to spare it. Do you 'spare' or 'kill' the mutant? ")
@@ -1282,7 +1534,7 @@ past the default 100 value, you might not be able to outrun the rambunctious rod
     while outrunFight != "fight" and outrunFight != "outrun":
         outrunFight = input("That won't work this time! Do you 'fight' or 'outrun' the rat? ")
     if outrunFight == "fight":
-        fightSequence(rat, location)
+        fightSequenceOld(rat, location)
         if restart:
             return
         allIn = True
@@ -1313,7 +1565,7 @@ and waddles away in the other direction. In the process though you did cut your 
                 print("Despite your determination in trying to outrun the creature.\n\
 However, it doesn't fully defeat you when it catches up with you, and as such you are forced to fight it.")
                 playerCurrentHealth -= 50
-                fightSequence(rat, location)
+                fightSequenceOld(rat, location)
                 if restart:
                     return
                 allIn = True
