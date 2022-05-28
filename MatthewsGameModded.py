@@ -175,16 +175,19 @@ class Player:
         print("Max starts preparing " + self.CurrentAttack().name + " It'll be done in " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart + 1) + " turns.")
 
 
-    def SwitchWeapons(self, startingText : str):
+    def SwitchWeapons(self, startingText : str, nevermindable : bool):
             turnDialogue = startingText + "'" + self.attacks[0].name + "' "
             for attack in range(len(self.attacks) - 1):
                 turnDialogue += "or '" + self.attacks[attack + 1].name + "' "
+
+            if nevermindable:
+                turnDialogue += " or 'nevermind'? "
 
             prompt = input(turnDialogue)
 
             inputedAttack = 0
 
-            badInput = True
+            badInput = ((prompt != "nevermind") or (not nevermindable))
             for currentAttack in range(len(self.attacks)):
                 if prompt == self.attacks[currentAttack].name:
                     badInput = False
@@ -192,9 +195,10 @@ class Player:
 
             while badInput:
                 prompt = input("That won't work this time! Do you want to " + turnDialogue)
+                badInput = ((prompt != "nevermind") or (not nevermindable))
                 for currentAttack in range(len(self.attacks)):
                     if prompt == self.attacks[currentAttack].name:
-                        badInput == False
+                        badInput = False
                         inputedAttack = currentAttack
             
             self.ChangeAttackTo(inputedAttack)
@@ -477,7 +481,7 @@ def fightSequence(enemies : Enemy, location):
         if fightFrameOne:
             fightFrameOne = False
             enemiesC[0].FindNewAttack()
-            currentWeapon.SwitchWeapons("Do you want to use ")
+            currentWeapon.SwitchWeapons("Do you want to use ", False)
 
             
 
@@ -503,7 +507,7 @@ def fightSequence(enemies : Enemy, location):
 
 
         else:
-            currentWeapon.SwitchWeapons("")
+            currentWeapon.SwitchWeapons("", True)
 
             
 
