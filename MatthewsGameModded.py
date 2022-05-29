@@ -8,8 +8,11 @@ I hope that you enjoy this experience, and if you want, maybe you'll even mod th
 from copy import deepcopy # This lets us pass lists that aren't references.
 from enum import Enum # This lets me use enum classes, and they look nice. =]
 from math import *
+from os import unlink
 import random
 import time
+
+from numpy import block
 
 
 
@@ -30,8 +33,8 @@ import time
 class InflictionType(Enum):
     POISON = 0
     BLEED = 1
-    DEADLY_HUG = 2
-    BURNING = 3
+    BURNING = 2
+    DEADLY_HUG = 3
     #Insert more status effects here.
 
 
@@ -48,10 +51,10 @@ class Infliction:
                 return 2
             case InflictionType.BLEED:
                 return 3
-            case InflictionType.DEADLY_HUG:
-                return 1
             case InflictionType.BURNING:
                 return 10
+            case InflictionType.DEADLY_HUG:
+                return 1
 
     def DeathDamage(self):
         match self.effect:
@@ -59,10 +62,10 @@ class Infliction:
                 return 2
             case InflictionType.BLEED:
                 return 1
-            case InflictionType.DEADLY_HUG:
-                return 10
             case InflictionType.BURNING:
                 return 5
+            case InflictionType.DEADLY_HUG:
+                return 10
 
     def FindName(self):
         match self.effect:
@@ -70,10 +73,10 @@ class Infliction:
                 return "poison"
             case InflictionType.BLEED:
                 return "bleed"
-            case InflictionType.DEADLY_HUG:
-                return "deadly hug"
             case InflictionType.BURNING:
                 return "burning"
+            case InflictionType.DEADLY_HUG:
+                return "deadly hug"
 
 
 
@@ -103,10 +106,12 @@ class StatusEffect:
 class Hit:
     damage : int
     inflictions : StatusEffect
+    attacker : int
 
-    def __init__(self, damage : int, inflictions : StatusEffect):
+    def __init__(self, damage : int, inflictions : StatusEffect, attacker : int):
         self.damage = damage
         self.inflictions = inflictions
+        self.attacker = attacker
 
 
 
@@ -129,29 +134,33 @@ class Attack:
         self.name = name
         self.timeSinceStart = 0
 
-    def RollDamage(self):
+    def RollDamage(self, currentIndex : int):
         inflictions = []
         for i in range(len(self.procs)):
             if random.randint(1, 100) <= self.procChances[i]:
                 inflictions.append(self.procs[i])
 
-        return Hit(random.randint(self.damage - self.damageRand, self.damage + self.damageRand), inflictions)
+        return Hit(random.randint(self.damage - self.damageRand, self.damage + self.damageRand), inflictions, currentIndex)
 
 
 
 class Enemy:
     inflictions : StatusEffect
+    inflictionAttackers : int
     health : int
     activeAttack : int
     attacks : Attack
     name : str
+    leech : float
 
-    def __init__(self, health, attacks : Attack, name : str):
+    def __init__(self, health, attacks : Attack, name : str, leech : float):
         self.inflictions = []
+        self.inflictionAttackers = []
         self.health = health
         self.activeAttack = 0
         self.attacks = deepcopy(attacks)
         self.name = name
+        self.leech = leech
 
     def CurrentAttack(self):
         return self.attacks[self.activeAttack]
@@ -165,13 +174,13 @@ class Enemy:
         else:
             print(self.name + " starts preparing " + self.CurrentAttack().name + " It'll be done next turn.")
 
-    def TakeTurn(self):
+    def TakeTurn(self, currentIndex : int):
         hit : Hit
 
         if self.CurrentAttack().length <= self.CurrentAttack().timeSinceStart:
-            hit = self.CurrentAttack().RollDamage()
+            hit = self.CurrentAttack().RollDamage(currentIndex)
             if hit.damage != 0 or hit.inflictions != []:
-                print(self.name + " does " + self.CurrentAttack().name + ". This attack deals " + str(hit.damage))
+                print(self.name + " does " + self.CurrentAttack().name + ". This attack deals " + str(hit.damage) + " damage.")
                 for infliction in hit.inflictions:
                     print("This attack inflicts " + infliction.Name() + " for " + str(infliction.durationLeft) + " turns.")
 
@@ -182,7 +191,7 @@ class Enemy:
 
 
         else:
-            hit = Hit(0, [])
+            hit = Hit(0, [], 0)
             if self.CurrentAttack().length - self.CurrentAttack().timeSinceStart > 1:
                 print(self.name + " continues to prepare their " + self.CurrentAttack().name + ". They have " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart) + " turns left.")
             else:
@@ -194,17 +203,23 @@ class Enemy:
     def ApplyHit(self, hit : Hit):
         self.health -= hit.damage
         self.inflictions.extend(deepcopy(hit.inflictions))
+        for i in range(len(hit.inflictions)):
+            self.inflictionAttackers.append(hit.attacker)
 
     def UpdateInflictions(self):
         destroyedThisFrame = 0
+        damageFromSources = [0] * len(self.inflictionAttackers)
+        orinalInflictionAttackers = deepcopy(self.inflictionAttackers)
 
         for i in range(len(self.inflictions)):
             damage = self.inflictions[i - destroyedThisFrame].Update()
             self.health -= damage
+            damageFromSources[i] += damage
 
             if self.inflictions[i - destroyedThisFrame].shouldBeDestroyed:
                 print(self.name + "'s " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed but it did " + str(damage) + " damage this turn.")
                 del self.inflictions[i - destroyedThisFrame]
+                del self.inflictionAttackers[i - destroyedThisFrame]
                 destroyedThisFrame += 1
 
             else:
@@ -213,17 +228,21 @@ class Enemy:
                 else:
                     print(self.name + " is inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone next turn.")
 
+        return orinalInflictionAttackers, damageFromSources
+
 
 
 class Weapon:
     activeAttack : int
     attacks : Attack
     name : str
+    leech : float
 
-    def __init__(self, attacks : Attack, name : str):
+    def __init__(self, attacks : Attack, name : str, leech : float):
         self.activeAttack = 0
         self.attacks = deepcopy(attacks)
         self.name = name
+        self.leech = leech
 
     def CurrentAttack(self):
         return self.attacks[self.activeAttack]
@@ -249,7 +268,12 @@ class Weapon:
 
             inputedAttack = 0
 
-            badInput = ((prompt != "nevermind") or (not nevermindable))
+            badInput = True
+            
+            if prompt == "nevermind" and nevermindable:
+                badInput = False
+                inputedAttack = self.activeAttack
+
             for currentAttack in range(len(self.attacks)):
                 if prompt == self.attacks[currentAttack].name:
                     badInput = False
@@ -269,12 +293,14 @@ class Weapon:
 
 class Player:
     inflictions : StatusEffect
-    maxHealth : int # More like Max'S health... am I right?
+    inflictionAttackers : int
+    maxHealth : int # More like Max'S health, am I right!...
     currentHealth : int
     weapon : Weapon
 
     def __init__(self, maxHealth : int):
         self.inflictions = []
+        self.inflictionAttackers = []
         self.maxHealth = maxHealth
         self.currentHealth = maxHealth
 
@@ -282,7 +308,7 @@ class Player:
         hit : Hit
 
         if self.weapon.CurrentAttack().length <= self.weapon.CurrentAttack().timeSinceStart:
-            hit = self.weapon.CurrentAttack().RollDamage()
+            hit = self.weapon.CurrentAttack().RollDamage(0)
             if hit.damage != 0 or hit.inflictions != []:
                 print("Max uses their " + self.weapon.name + " and does " + self.weapon.CurrentAttack().name + ". This attack deals " + str(hit.damage) + " damage.")
                 for infliction in hit.inflictions:
@@ -294,7 +320,7 @@ class Player:
 
 
         else:
-            hit = Hit(0, [])
+            hit = Hit(0, [], 0)
             if self.weapon.CurrentAttack().length - self.weapon.CurrentAttack().timeSinceStart > 1:
                 print("Max continues to prepare their " + self.weapon.name + "'s " + self.weapon.CurrentAttack().name + ". They have " + str(self.weapon.CurrentAttack().length - self.weapon.CurrentAttack().timeSinceStart) + " turns left.")
             else:
@@ -307,24 +333,32 @@ class Player:
     def ApplyHit(self, hit : Hit):
         self.currentHealth -= hit.damage
         self.inflictions.extend(deepcopy(hit.inflictions))
+        for i in range(len(hit.inflictions)):
+            self.inflictionAttackers.append(hit.attacker)
 
     def UpdateInflictions(self):
         destroyedThisFrame = 0
+        damageFromSources = [0] * len(self.inflictionAttackers)
+        orinalInflictionAttackers = deepcopy(self.inflictionAttackers)
 
         for i in range(len(self.inflictions)):
             damage = self.inflictions[i - destroyedThisFrame].Update()
             self.currentHealth -= damage
+            damageFromSources[i] += damage
 
             if self.inflictions[i - destroyedThisFrame].shouldBeDestroyed:
-                print("You're " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed but it did " + str(damage) + " damage this turn.")
+                print("Your " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed but it did " + str(damage) + " damage this turn.")
                 del self.inflictions[i - destroyedThisFrame]
+                del self.inflictionAttackers[i - destroyedThisFrame]
                 destroyedThisFrame += 1
 
             else:
                 if self.inflictions[i - destroyedThisFrame].durationLeft > 1:
-                    print("Your inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone in " + str(self.inflictions[i - destroyedThisFrame].durationLeft) + " turns.")
+                    print("You're inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone in " + str(self.inflictions[i - destroyedThisFrame].durationLeft) + " turns.")
                 else:
-                    print("Your inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone next turn.")
+                    print("You're inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone next turn.")
+        
+        return orinalInflictionAttackers, damageFromSources
 
         
 
@@ -350,22 +384,26 @@ def weaponSelect():
     global player, weaponChoice, weaponStrength
 
     if weaponChoice == "bow": 
-        player.weapon = Weapon([bow1Shoot, bow1ArrowStab], "Bow")
+        player.weapon = Weapon([bow1Shoot, bow1ArrowStab], "Bow", 0.0)
         weaponStrength = 6
         print("A standard bow.\n\
 It's a slow weapon that stays inside of enemies and damages them over time.")
 
 
     elif weaponChoice == "axe":
-        player.weapon = Weapon([axe1DeepCut, axe1Finisher], "Axe")
+        player.weapon = Weapon([axe1DeepCut, axe1Finisher], "Axe", 0.0)
         weaponStrength = 8
         print("A pair of small battle axes.\n\
 They're quick weapons that do damage over time, and accumulate their damage instead of giving it to you upfront, good at single target.") 
     elif weaponChoice == "sword":
-        player.weapon = Weapon([sword1HeavyBlow, sword1QuickAttack], "Sword")
+        player.weapon = Weapon([sword1HeavyBlow, sword1QuickAttack], "Sword", 0.0)
         weaponStrength = 10 
         print("A steel longsword.\n\
-It does high damage, but does all of it's damage upfront and as such does less damage on tankier foes, but is good at small foes.")  
+It does high damage, but does all of it's damage upfront and as such does less damage on tankier foes, but is good at small foes.")
+    elif weaponChoice == "ogre in a bottle":
+        player.weapon = Weapon([clubBash, punch], "Ogre in a bottle", 0.0)
+        weaponStrength = 1000
+        print("BONK")
 
 
 
@@ -567,66 +605,161 @@ def fightSequenceOld(enemy, location):
 
 
 
-def fightSequence(enemies : Enemy, location):
-    enemiesC = deepcopy(enemies) # The C in enemiesC stands for copy.       
-    global player
+def fightSequence(enemies : Enemy, location, specialEnding : str):
+    global player, specialFightEnding
 
+    specialFightEnding = False
+    enemiesC = deepcopy(enemies) # The C in enemiesC stands for copy.       
     fightOn = True
     fightFrameOne = True
+    target = 0
 
     while fightOn: 
 
         print("")
-        print(enemiesC[0].name + "'s health: " + str(enemiesC[0].health)) 
+        for enemy in enemiesC:
+            print(enemy.name + "'s health: " + str(enemy.health)) 
         print("Max's health: ", player.currentHealth)
         print("")
 
         if fightFrameOne:
             fightFrameOne = False
-            enemiesC[0].FindNewAttack()
+            for enemy in enemiesC:
+                enemy.FindNewAttack()
             player.weapon.SwitchAttacks("Do you want to use ", False)
 
             
+        dialogue = "'dodge' or 'attack' to continue your current attack or 'switch' your attack"
+        if len(enemiesC) > 1:
+            dialogue += " or 'change' targets from " + enemiesC[target].name
+        dialogue += "? "
+        prompt = input(dialogue)
 
-        prompt = input("'dodge' or 'attack' to continue your current attack or 'switch' your attack? ")
-
-        while prompt != "dodge" and prompt != "attack" and prompt != "switch":
-            prompt = input("That won't work this time! Do you want to 'dodge' or 'attack' to continue your current attack or 'switch' your attack? ")
+        while prompt != "dodge" and prompt != "attack" and prompt != "switch" and (not (len(enemiesC) > 1 and prompt == "change")):
+            prompt = input("That won't work this time! " + dialogue)
 
 
         if prompt == "dodge":
             print("")
-            enemyHit = enemiesC[0].TakeTurn()
-            damageDelt = floor(enemyHit.damage / 2)
-            player.ApplyHit(Hit(damageDelt, enemyHit.inflictions))
+            unblockedDamage = 0
+            blockedDamage = 0
+            for i in range(len(enemiesC)):
+                enemyHit = enemiesC[i].TakeTurn(i)
+                unblockedDamage += enemyHit.damage
+                damageDelt = floor(enemyHit.damage / 2)
+                heal = int(floor(float(damageDelt) * enemiesC[i].leech))
+                if heal != 0:
+                    print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
+                    enemiesC[i].health += heal
+                blockedDamage += damageDelt
+                player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i))
+                print("")
+
+            print("You dodged the attack and took " + str(blockedDamage) + " damage instead of taking " + str(unblockedDamage) + " damage!")
             print("")
-            print("You dodged the attack and took " + str(damageDelt) + " instead of taking " + str(enemyHit.damage) + " damage!")
-            print("")
-            enemiesC[0].UpdateInflictions()
-            print("")
-            player.UpdateInflictions()
+
+            for i in range(len(enemiesC)):
+                ignored, inflictionDamageDelt = enemiesC[i].UpdateInflictions()
+                for damage in inflictionDamageDelt:
+                    heal = int(floor(float(damage) * player.weapon.leech))
+                    if heal != 0:
+                        print("You heal off of " + enemiesC[i].name + " for " + str(heal) + " because of inflictions")
+                        player.currentHealth += heal
+                print("")
+
+            damageDealer, inflictionDamageDelt = player.UpdateInflictions()
+            for i in range(len(inflictionDamageDelt)):
+                heal = int(floor(float(inflictionDamageDelt[i].damage) * enemiesC[damageDealer[i]].leech))
+                if heal != 0:
+                    print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of inflictions")
+                    enemiesC[damageDealer[i]].health += heal
 
 
         elif prompt == "attack":
             print("")
-            enemyHit = enemiesC[0].TakeTurn()
-            player.ApplyHit(enemyHit)
+            for i in range(len(enemiesC)):
+                enemyHit = enemiesC[i].TakeTurn(i)
+                player.ApplyHit(enemyHit)
+                heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
+                if heal != 0:
+                    print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
+                    enemiesC[i].health += heal
+                print("")
 
             playerHit = player.TakeTurn()
-            enemiesC[0].ApplyHit(playerHit)
+            enemiesC[target].ApplyHit(playerHit)
+            player.currentHealth += int(floor(float(playerHit.damage) * player.weapon.leech))
+            print("")
 
-            enemiesC[0].UpdateInflictions()
-            player.UpdateInflictions()
+            for i in range(len(enemiesC)):
+                ignored, inflictionDamageDelt = enemiesC[i].UpdateInflictions()
+                for damage in inflictionDamageDelt:
+                    heal = int(floor(float(damage) * player.weapon.leech))
+                    if heal != 0:
+                        print("You heal off of " + enemiesC[i].name + " for " + str(heal) + " because of inflictions")
+                        player.currentHealth += heal
+                print("")
+
+            damageDealer, inflictionDamageDelt = player.UpdateInflictions()
+            for i in range(len(inflictionDamageDelt)):
+                heal = int(floor(float(inflictionDamageDelt[i]) * enemiesC[damageDealer[i]].leech))
+                if heal != 0:
+                    print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of inflictions")
+                    enemiesC[damageDealer[i]].health += heal
+
+
+        elif prompt == "switch":
+            player.weapon.SwitchAttacks("", True)
 
 
         else:
-            player.weapon.SwitchAttacks("", True)
+            answer = 0
+            while answer < 1 or answer > len(enemiesC):
+                for i in range(len(enemiesC)):
+                    print(enemiesC[i].name + ": " + str(i + 1))
+                tempAnswer = input("or 'nevermind'. ")
+                if tempAnswer.isnumeric():
+                    answer = int(tempAnswer)
+                elif tempAnswer == "nevermind":
+                    answer = target + 1
+            target = answer - 1
 
             
 
-        fightOn = player.currentHealth > 0
-        for enemy in enemiesC:
-            fightOn = fightOn and enemy.health > 0
+        enemiesRemovedThisFrame = 0
+        for i in range(len(enemiesC)):
+            if enemiesC[i - enemiesRemovedThisFrame].health <= 0:
+                print(enemiesC[i - enemiesRemovedThisFrame].name + " has been defeated.")
+                
+                inflictionsRemovedThisFrame = 0
+                for j in range(len(player.inflictions)):
+                    if player.inflictionAttackers[j - inflictionsRemovedThisFrame] > i - enemiesRemovedThisFrame:
+                        player.inflictionAttackers[j - inflictionsRemovedThisFrame] -= 1
+                    elif player.inflictionAttackers[j - inflictionsRemovedThisFrame] == i - enemiesRemovedThisFrame:
+                        print(player.inflictions[j - inflictionsRemovedThisFrame].Name() + " has worn off.")
+                        del(player.inflictionAttackers[j - inflictionsRemovedThisFrame])
+                        del(player.inflictions[j - inflictionsRemovedThisFrame])
+                        inflictionsRemovedThisFrame += 1
+                del(enemiesC[i - enemiesRemovedThisFrame])
+                enemiesRemovedThisFrame += 1
+                target = 0
+
+        fightOn = player.currentHealth > 0 and len(enemiesC) > 0
+        if not fightOn:
+            break
+
+        enemyNames = [enemiesC[0].name]
+        combinedEnemyNames = enemiesC[0].name
+        for i in range(len(enemiesC) - 1):
+            enemyNames.append(enemiesC[i + 1].name)
+            combinedEnemyNames += ", " + enemiesC[i + 1].name
+        for option in specialEnding:
+            if option == enemyNames:
+                print("The " + combinedEnemyNames + " have chosen to stop fighting.")
+                fightOn = False
+                specialFightEnding = True
+                break
+
 
 
     if player.currentHealth <= 0: 
@@ -635,12 +768,17 @@ def fightSequence(enemies : Enemy, location):
     else:
         if location == "village": 
             print(outroMessages[0]) 
-        elif location == "forest": 
-            print(outroMessages[1]) 
+        elif location == "forest":
+            print(outroMessages[1])
         elif location == "old bridge":
             print(outroMessages[2])
         elif location == "sewers":
             print(outroMessages[3])
+        elif location == "forest2":
+            print(outroMessages[4]) 
+
+    player.inflictions.clear()
+    player.currentHealth = min(player.maxHealth, player.currentHealth + 50)
 
 
 
@@ -1245,7 +1383,8 @@ for anything valuable, a guard approaches from the distance, and \
 you pick up the pace to the village exit where you can continue your quest. ", "The goblin collapses, and you take pity on the creature \
 as you collect your items and continue towards the castle.", "The troll becomes motionless, and after you poke it with your weapon to see if she's still alive, \
 gravity finally takes effect, and the troll falls over the side of the bridge into the murky depths below, creating such a splash that the water soaks your hair. \
-You regain your composure, and proceed to start walking along the path again.", "You slay the horrid creature, and continue walking towards the light."]
+You regain your composure, and proceed to start walking along the path again.", "You slay the horrid creature, and continue walking towards the light.",\
+"Both goblins collapse, and after questioning your own ethics you continue on your journey; new pet in hand."]
 
 
 
@@ -1303,9 +1442,16 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 #Variables and game:
 
 #Constant variables:
-#Attacks
+#Attacks 
+#The syntax for a status effect is:
+#StatusEffect(InflictionType.YOURINFLICTION, how long you want it to last)
+#The syntax for an attacks is:
+#Attack([Status effects], [chance of each status effect happening], damage, damage randomness (how far from the original value the actual value can be), turns to do, name)
 clubBash = Attack([], [], 25, 10, 3, "club bash")
 punch = Attack([], [], 5, 5, 1, "punch")
+quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, 1, "quick stab")
+rockThrow = Attack([], [50], 5, 5, 1, "rock throw")
+slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, 1, "slime hug")
 
 #Player attacks
 #Bow1
@@ -1329,11 +1475,12 @@ restart = True
 def main():
     global location, ogre, ogreOld, goblin, goblinOld, troll, mutant, rat, player, allIn, currentWeapon, \
     weaponChoice, restart, weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr
-
+    print(str([0] * 8))
     restart = False
-    ogre = Enemy(100, [clubBash, punch], "Ogre")
+    ogre = Enemy(100, [clubBash, punch], "Ogre", 0.0)
     ogreOld = random.randint(85,115)
-    goblin = Enemy(100, [clubBash, punch], "Goblin")
+    goblin = Enemy(100, [quickStab, rockThrow], "Goblin", 0.0)
+    slime = Enemy(25, [slimeHug], "Pet Slime", 1.0)
     goblinOld = random.randint(60,90)
     troll = random.randint(100,125)
     mutant = 120
@@ -1361,7 +1508,7 @@ blacksmith, where you must decide what kind of weapon you will bring with you \n
 on your journey.")
     #time.sleep(5)
     weaponChoice = input("Do you take a 'bow', 'axe', or 'sword'?: ")
-    while weaponChoice != "bow" and weaponChoice != "axe" and weaponChoice != "sword":
+    while weaponChoice != "bow" and weaponChoice != "axe" and weaponChoice != "sword" and weaponChoice != "ogre in a bottle":
         weaponChoice = input("That weapon isn't here! Do you take a 'bow', 'axe', or 'sword'?: ")
     weaponSelect()
     #time.sleep(5)
@@ -1377,8 +1524,7 @@ on your journey.")
     while fightRun != "fight" and fightRun != "run":
         fightRun = input("That won't work this time! Do you want to 'fight' or 'run' away from the ogre? ") 
     if fightRun == "fight": 
-        fightSequence([ogre], location)
-        fightSequenceOld(ogreOld, location) 
+        fightSequence([deepcopy(ogre)], location, [[]])
         if restart:
             return
         allIn = True 
@@ -1400,7 +1546,7 @@ to the village exit.")
             print("The ogre becomes enraged and slams you on the ground, howling \n\
 like a dog as he searches himself for the dagger he carries. You get back \n\
 on your feet and pull out your weapon.") 
-            fightSequenceOld(ogreOld, location)
+            fightSequence([deepcopy(ogre)], location, [[]])
             if restart:
                 return
             allIn = True
@@ -1416,15 +1562,13 @@ on your feet and pull out your weapon.")
     print("++++++++++++++++")
     print(" ")
     location = "forest"
-    if location == "village": 
-        print(introMessages[0]) 
-    elif location == "forest": 
-        print(introMessages[1]) 
+    print(introMessages[1]) 
     fightPersuade = input("Do you want to 'fight' or 'persuade' the goblin? ")
     while fightPersuade != "fight" and fightPersuade != "persuade":
         fightPersuade = input("That won't work this time! Do you want to 'fight' or 'persuade' the goblin? ")
     if fightPersuade == "fight":
-        fightSequenceOld(goblinOld, location)
+        print("A Pet Slime also jumps out of the bushes to protect their owner!")
+        fightSequence([deepcopy(goblin), deepcopy(slime)], location, [[]])
         if restart:
             return
         allIn = True 
@@ -1436,8 +1580,9 @@ on your feet and pull out your weapon.")
         if parkour == "slide":
             persuade = input("You successfully slide under the log, and find the goblin scurried up on a tree branch, \n\
 just out of reach. What do you say to the scared creature? \n\
-'1'. I won't hurt you I promise, just please give me back my stuff and I promise I'll make it up to you. \n\
-'2'. Don't make me come up there you dirty vermin! \n\
+Oh yeah, and there's some weird slime looking at him.\n\
+'1'. \"I won't hurt you I promise, just please give me back my stuff and I promise I'll make it up to you.\" \n\
+'2'. Pet that slime that you hope might be his and say \"You know, I like slimes too.\" \n\
 (pick a number): ")
             while persuade != "1" and persuade != "2":
                 persuade = input("That won't work this time! PICK A NUMBER: ")
@@ -1449,55 +1594,32 @@ back after you finish your quest to come work for him to pay off your debt. You 
                 endingOne = True
                 #!!!ENDING ONE!!!
             elif persuade == "2":
-                print("The goblin becomes furious after you insult and threaten him, and swiftly slashes you with his claws. \n\
-You're able to get up, but because of the surprise attack, you've lost valuable health and strength.")
+                print("The goblin becomes furious after you pet HIS pet slime, and swiftly slashes you with his claws. \n\
+You're able to get up, but because of the surprise attack, you've lost valuable health.")
                 goblinFight = True
                 while goblinFight == True:
-                    player.maxHealth = int(player.maxHealth/2)
-                    weaponStrength = int(weaponStrength/2)
-                    fightSequenceOld(goblinOld, location)
-                    player.maxHealth = int(player.maxHealth * 2) 
+                    player.maxHealth = int(player.maxHealth / 2)
+                    player.currentHealth = int(player.currentHealth / 2)
+                    weaponStrength = int(weaponStrength / 2)
+                    fightSequence([deepcopy(goblin), deepcopy(slime)], location, [["Pet Slime"]])
+                    player.maxHealth = int(player.maxHealth * 2)
+                    player.currentHealth = player.maxHealth
                     weaponStrength = int(weaponStrength * 2)
                     goblinFight = False
+                    if (specialFightEnding):
+                        player.weapon = Weapon([slimeHug], "Pet Slime", 1.0)
+                        print("Oddly enough, you have now seemingly befriended the pet slime. The Pet Slime has replaced your weapon.")
+                        print("And after seeing this beautiful sight 2 disgusted goblins jump out of the trees to take you on.")
+                        location = "forest2"
+                        fightSequence([deepcopy(goblin), deepcopy(goblin)], location, [[]])
                 if restart:
                     return
                 allIn = True
-        elif parkour == "vault":
-            weakStrong = random.randint(0,1)
-            if weakStrong == 0:
-                print("You try to vault over the bush, but because you skipped leg day \n\
+        else:
+            print("You try to vault over the bush, but because you skipped leg day \n\
 at the medieval gym, you fail and fall face first into some *very* sharp thorns")
-                end()
-                return
-            elif weakStrong == 1:
-                persuade = input("You successfully vault over the bush, and find the goblin scurried up on a tree branch, \n\
-just out of reach. What do you say to the scared creature? \n\
-'1'. I won't hurt you I promise, just please give me back my stuff and I promise I'll make it up to you. \n\
-'2'. Don't make me come up there you dirty vermin! \n\
-(pick a number): ")
-                while persuade != "1" and persuade != "2":
-                    persuade = input("That won't work this time! PICK A NUMBER: ")
-                if persuade == "1":
-                    print("The goblin begrudgingly drops your items, but makes you promise that, under oath, you will come \n\
-back after you finish your quest to come work for him to pay off your debt. You gather your pack and continue towards the castle.")
-                    emptyStr, strings = stringWord(emptyStr)
-                    trackEndings.append("Do you want to repay your debt to the goblin?")
-                    endingOne = True
-                    #!!!ENDING ONE!!!
-                elif persuade == "2":
-                    print("The goblin becomes furious after you insult and threaten him, and swiftly slashes you with his claws. \n\
-You're able to get up, but because of the surprise attack, you've lost valuable health and strength.")
-                    goblinFight = True
-                    while goblinFight == True:
-                        player.maxHealth = int(player.maxHealth/2)
-                        weaponStrength = int(weaponStrength/2)
-                        fightSequenceOld(goblinOld, location)
-                        player.maxHealth = int(player.maxHealth * 2) 
-                        weaponStrength = int(weaponStrength * 2)
-                        goblinFight = False
-                    if restart:
-                        return
-                    allIn = True
+            end()
+            return
     #time.sleep(5)                
     print(" ")
     print("++++++++++++++++")
