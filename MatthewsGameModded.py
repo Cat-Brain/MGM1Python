@@ -64,34 +64,55 @@ class Infliction:
             case InflictionType.BURNING:
                 return 5
 
+    def FindName(self):
+        match self.effect:
+            case InflictionType.POISON:
+                return "poison"
+            case InflictionType.BLEED:
+                return "bleed"
+            case InflictionType.DEADLY_HUG:
+                return "deadly hug"
+            case InflictionType.BURNING:
+                return "burning"
+
 
 
 class StatusEffect:
     effect : Infliction
     durationLeft : int
+    shouldBeDestroyed : bool
 
-    def __init__(self, effect : Infliction, duration : int):
-        self.effect = effect
+    def __init__(self, effect : InflictionType, duration : int):
+        self.effect = Infliction(effect)
         self.durationLeft = duration
+        self.shouldBeDestroyed = False
 
     def Update(self):
         self.durationLeft -= 1
         if self.durationLeft <= 0:
-            return False, self.effect.DeathDamage()
-        return True, self.effect.FindDamage()
+            self.shouldBeDestroyed = True
+            return self.effect.DeathDamage()
+        return self.effect.FindDamage()
+
+    def Name(self):
+        return self.effect.FindName()
             
 
 
 
 class Hit:
     damage : int
+    inflictions : StatusEffect
 
-    def __init__(self, damage : int):
+    def __init__(self, damage : int, inflictions : StatusEffect):
         self.damage = damage
+        self.inflictions = inflictions
 
 
 
 class Attack:
+    procs : StatusEffect
+    procChances : int # Percent
     damage : int
     damageRand : int
     randomness : int
@@ -99,7 +120,9 @@ class Attack:
     timeSinceStart : int
     name : str
 
-    def __init__(self, damage : int, damageRand : int, length : int, name : int):
+    def __init__(self, procs : StatusEffect, procChances : int, damage : int, damageRand : int, length : int, name : int):
+        self.procs = procs
+        self.procChances = procChances
         self.damage = damage
         self.damageRand = damageRand
         self.length = length
@@ -107,17 +130,24 @@ class Attack:
         self.timeSinceStart = 0
 
     def RollDamage(self):
-        return Hit(random.randint(self.damage - self.damageRand, self.damage + self.damageRand))
+        inflictions = []
+        for i in range(len(self.procs)):
+            if random.randint(1, 100) <= self.procChances[i]:
+                inflictions.append(self.procs[i])
+
+        return Hit(random.randint(self.damage - self.damageRand, self.damage + self.damageRand), inflictions)
 
 
 
 class Enemy:
+    inflictions : StatusEffect
     health : int
     activeAttack : int
     attacks : Attack
     name : str
 
     def __init__(self, health, attacks : Attack, name : str):
+        self.inflictions = []
         self.health = health
         self.activeAttack = 0
         self.attacks = deepcopy(attacks)
@@ -130,15 +160,20 @@ class Enemy:
         self.attacks[self.activeAttack].timeSinceStart = 0
         self.activeAttack = random.randint(0, len(self.attacks) - 1)
         self.attacks[self.activeAttack].timeSinceStart = 1
-        print(self.name + " starts preparing " + self.CurrentAttack().name + " It'll be done in " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart + 1) + " turns.")
+        if self.CurrentAttack().length - self.CurrentAttack().timeSinceStart > 0:
+            print(self.name + " starts preparing " + self.CurrentAttack().name + " It'll be done in " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart + 1) + " turns.")
+        else:
+            print(self.name + " starts preparing " + self.CurrentAttack().name + " It'll be done next turn.")
 
     def TakeTurn(self):
         hit : Hit
 
         if self.CurrentAttack().length <= self.CurrentAttack().timeSinceStart:
             hit = self.CurrentAttack().RollDamage()
-            if hit.damage != 0:
+            if hit.damage != 0 or hit.inflictions != []:
                 print(self.name + " does " + self.CurrentAttack().name + ". This attack deals " + str(hit.damage))
+                for infliction in hit.inflictions:
+                    print("This attack inflicts " + infliction.Name() + " for " + str(infliction.durationLeft) + " turns.")
 
             else:
                 print(self.name + " misses.")
@@ -147,15 +182,40 @@ class Enemy:
 
 
         else:
-            hit = Hit(0)
-            print(self.name + " continues to prepare their " + self.name + "'s " + self.CurrentAttack().name + " They have " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart) + " turns left.")
+            hit = Hit(0, [])
+            if self.CurrentAttack().length - self.CurrentAttack().timeSinceStart > 1:
+                print(self.name + " continues to prepare their " + self.CurrentAttack().name + ". They have " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart) + " turns left.")
+            else:
+                print(self.name + " continues to prepare their " + self.CurrentAttack().name + ". They will be done next turn.")
             self.attacks[self.activeAttack].timeSinceStart += 1
 
         return hit
 
+    def ApplyHit(self, hit : Hit):
+        self.health -= hit.damage
+        self.inflictions.extend(deepcopy(hit.inflictions))
+
+    def UpdateInflictions(self):
+        destroyedThisFrame = 0
+
+        for i in range(len(self.inflictions)):
+            damage = self.inflictions[i - destroyedThisFrame].Update()
+            self.health -= damage
+
+            if self.inflictions[i - destroyedThisFrame].shouldBeDestroyed:
+                print(self.name + "'s " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed but it did " + str(damage) + " damage this turn.")
+                del self.inflictions[i - destroyedThisFrame]
+                destroyedThisFrame += 1
+
+            else:
+                if self.inflictions[i - destroyedThisFrame].durationLeft > 1:
+                    print(self.name + " is inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone in " + str(self.inflictions[i - destroyedThisFrame].durationLeft) + " turns.")
+                else:
+                    print(self.name + " is inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone next turn.")
 
 
-class Player:
+
+class Weapon:
     activeAttack : int
     attacks : Attack
     name : str
@@ -172,10 +232,12 @@ class Player:
         self.attacks[self.activeAttack].timeSinceStart = 0
         self.activeAttack = newAttack
         self.attacks[self.activeAttack].timeSinceStart = 1
-        print("Max starts preparing " + self.CurrentAttack().name + " It'll be done in " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart + 1) + " turns.")
+        if self.CurrentAttack().length - self.CurrentAttack().timeSinceStart > 0:
+            print("Max starts preparing " + self.CurrentAttack().name + " It'll be done in " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart + 1) + " turns.")
+        else:
+            print("Max starts preparing " + self.CurrentAttack().name + " It'll be done next turn.")
 
-
-    def SwitchWeapons(self, startingText : str, nevermindable : bool):
+    def SwitchAttacks(self, startingText : str, nevermindable : bool):
             turnDialogue = startingText + "'" + self.attacks[0].name + "' "
             for attack in range(len(self.attacks) - 1):
                 turnDialogue += "or '" + self.attacks[attack + 1].name + "' "
@@ -202,27 +264,69 @@ class Player:
                         inputedAttack = currentAttack
             
             self.ChangeAttackTo(inputedAttack)
+    
+
+
+class Player:
+    inflictions : StatusEffect
+    maxHealth : int # More like Max'S health... am I right?
+    currentHealth : int
+    weapon : Weapon
+
+    def __init__(self, maxHealth : int):
+        self.inflictions = []
+        self.maxHealth = maxHealth
+        self.currentHealth = maxHealth
 
     def TakeTurn(self):
         hit : Hit
 
-        if self.CurrentAttack().length <= self.CurrentAttack().timeSinceStart:
-            hit = self.CurrentAttack().RollDamage()
-            if hit.damage != 0:
-                print("Max uses their " + self.name + " and does " + self.CurrentAttack().name + ". This attack deals " + str(hit.damage))
+        if self.weapon.CurrentAttack().length <= self.weapon.CurrentAttack().timeSinceStart:
+            hit = self.weapon.CurrentAttack().RollDamage()
+            if hit.damage != 0 or hit.inflictions != []:
+                print("Max uses their " + self.weapon.name + " and does " + self.weapon.CurrentAttack().name + ". This attack deals " + str(hit.damage) + " damage.")
+                for infliction in hit.inflictions:
+                    print("This attack inflicts " + infliction.Name() + " for " + str(infliction.durationLeft) + " turns.")
             else:
                 print("Max's " + self.name + " misses.")
             
-            self.attacks[self.activeAttack].timeSinceStart = 0
+            self.weapon.attacks[self.weapon.activeAttack].timeSinceStart = 0
 
 
         else:
-            hit = Hit(0)
-            print("Max continues to prepare their " + self.name + "'s " + self.CurrentAttack().name + " They have " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart) + " turns left.")
-
-        self.attacks[self.activeAttack].timeSinceStart += 1
+            hit = Hit(0, [])
+            if self.weapon.CurrentAttack().length - self.weapon.CurrentAttack().timeSinceStart > 1:
+                print("Max continues to prepare their " + self.weapon.name + "'s " + self.weapon.CurrentAttack().name + ". They have " + str(self.weapon.CurrentAttack().length - self.weapon.CurrentAttack().timeSinceStart) + " turns left.")
+            else:
+                print("Max continues to prepare their " + self.weapon.name + "'s " + self.weapon.CurrentAttack().name + ". They will be done next turn.")
+            
+        self.weapon.attacks[self.weapon.activeAttack].timeSinceStart += 1
 
         return hit
+
+    def ApplyHit(self, hit : Hit):
+        self.currentHealth -= hit.damage
+        self.inflictions.extend(deepcopy(hit.inflictions))
+
+    def UpdateInflictions(self):
+        destroyedThisFrame = 0
+
+        for i in range(len(self.inflictions)):
+            damage = self.inflictions[i - destroyedThisFrame].Update()
+            self.currentHealth -= damage
+
+            if self.inflictions[i - destroyedThisFrame].shouldBeDestroyed:
+                print("You're " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed but it did " + str(damage) + " damage this turn.")
+                del self.inflictions[i - destroyedThisFrame]
+                destroyedThisFrame += 1
+
+            else:
+                if self.inflictions[i - destroyedThisFrame].durationLeft > 1:
+                    print("Your inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone in " + str(self.inflictions[i - destroyedThisFrame].durationLeft) + " turns.")
+                else:
+                    print("Your inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone next turn.")
+
+        
 
 
 
@@ -243,26 +347,25 @@ class Player:
 
 
 def weaponSelect(): 
-    global weapon, weaponChoice, weaponStrength
-    bow1 = 0
-    axe1 = 1
-    sword1 = 2
+    global player, weaponChoice, weaponStrength
 
     if weaponChoice == "bow": 
-        weapon = bow1
+        player.weapon = Weapon([bow1Shoot, bow1ArrowStab], "Bow")
         weaponStrength = 6
         print("A standard bow.\n\
-It's a slow weapon that stays inside of enemies and damages them over time.") 
+It's a slow weapon that stays inside of enemies and damages them over time.")
+
+
     elif weaponChoice == "axe":
-        weapon = axe1
+        player.weapon = Weapon([axe1DeepCut, axe1Finisher], "Axe")
         weaponStrength = 8
         print("A pair of small battle axes.\n\
-They're quick weapons that damage your enemies for short amounts of time upon hitting them, good at crowd control.") 
+They're quick weapons that do damage over time, and accumulate their damage instead of giving it to you upfront, good at single target.") 
     elif weaponChoice == "sword":
-        weapon = sword1
+        player.weapon = Weapon([sword1HeavyBlow, sword1QuickAttack], "Sword")
         weaponStrength = 10 
         print("A steel longsword.\n\
-It does hight damage, but it can only hit 1 foe at a time.")  
+It does high damage, but does all of it's damage upfront and as such does less damage on tankier foes, but is good at small foes.")  
 
 
 
@@ -365,11 +468,11 @@ of what the number is, and try to add up to the sum of it (keep in mind you'll h
 
 
 def guardFightsequence():
-    global playerCurrentHealth
+    global player
     guard = 150
-    while guard > 0 and playerCurrentHealth > 0:
+    while guard > 0 and player.currentHealth > 0:
         print("Guard's health: ", guard) 
-        print("Max's health: ", playerCurrentHealth)
+        print("Max's health: ", player.currentHealth)
         if allIn == False:
             prompt = input("'hit' or 'dodge' or 'plead'? ") 
             while prompt != "hit" and prompt != "dodge" and prompt != "plead":
@@ -383,17 +486,17 @@ def guardFightsequence():
             guard -= guardDamage * weaponStrength 
             print("You hit the enemy and they took " + str(guardDamage * weaponStrength) + " damage!") 
             playerDamage = random.randint(10,20)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("The enemy hit you and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!") 
         elif prompt == "plead":
             morality = random.randint(1,2)
             if morality == 1:
                 playerDamage = random.randint(5,10)
-                playerCurrentHealth -= playerDamage
+                player.currentHealth -= playerDamage
                 print("You risk getting hit to try and desperately plead with the only human you've had to fight so far, \n\
 but the guard rejects your cries for peace and hits you, making you lose ",playerDamage," health!")
             else:
@@ -408,7 +511,7 @@ and the guard hesitantly stops his attack to let you plead your case.")
                 return
             else:
                 guard = 0
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
         if guard <= 0:
@@ -418,10 +521,10 @@ and the guard hesitantly stops his attack to let you plead your case.")
 
 
 def fightSequenceOld(enemy, location):       
-    global playerCurrentHealth
-    while enemy > 0 and playerCurrentHealth > 0: 
+    global player
+    while enemy > 0 and player.currentHealth > 0: 
         print("Enemy's health: ", enemy) 
-        print("Max's health: ", playerCurrentHealth)
+        print("Max's health: ", player.currentHealth)
         if allIn == False:
             prompt = input("'hit' or 'dodge'? ") 
             while prompt != "hit" and prompt != "dodge":
@@ -435,11 +538,11 @@ def fightSequenceOld(enemy, location):
             enemy -= enemyDamage * weaponStrength 
             print("You hit the enemy and they took " + str(enemyDamage * weaponStrength) + " damage!") 
             playerDamage = random.randint(10,20)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("The enemy hit you and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!") 
         elif prompt == "all in": 
             damage = random.randint(0,1) 
@@ -448,7 +551,7 @@ def fightSequenceOld(enemy, location):
                 return
             else:
                 enemy = 0
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
         if enemy <= 0:
@@ -466,7 +569,7 @@ def fightSequenceOld(enemy, location):
 
 def fightSequence(enemies : Enemy, location):
     enemiesC = deepcopy(enemies) # The C in enemiesC stands for copy.       
-    global playerCurrentHealth, currentWeapon
+    global player
 
     fightOn = True
     fightFrameOne = True
@@ -475,13 +578,13 @@ def fightSequence(enemies : Enemy, location):
 
         print("")
         print(enemiesC[0].name + "'s health: " + str(enemiesC[0].health)) 
-        print("Max's health: ", playerCurrentHealth)
+        print("Max's health: ", player.currentHealth)
         print("")
 
         if fightFrameOne:
             fightFrameOne = False
             enemiesC[0].FindNewAttack()
-            currentWeapon.SwitchWeapons("Do you want to use ", False)
+            player.weapon.SwitchAttacks("Do you want to use ", False)
 
             
 
@@ -492,31 +595,41 @@ def fightSequence(enemies : Enemy, location):
 
 
         if prompt == "dodge":
+            print("")
             enemyHit = enemiesC[0].TakeTurn()
             damageDelt = floor(enemyHit.damage / 2)
-            playerCurrentHealth -= damageDelt
+            player.ApplyHit(Hit(damageDelt, enemyHit.inflictions))
+            print("")
             print("You dodged the attack and took " + str(damageDelt) + " instead of taking " + str(enemyHit.damage) + " damage!")
-        
+            print("")
+            enemiesC[0].UpdateInflictions()
+            print("")
+            player.UpdateInflictions()
+
 
         elif prompt == "attack":
+            print("")
             enemyHit = enemiesC[0].TakeTurn()
-            playerCurrentHealth -= enemyHit.damage
+            player.ApplyHit(enemyHit)
 
-            playerHit = currentWeapon.TakeTurn()
-            enemiesC[0].health -= playerHit.damage
+            playerHit = player.TakeTurn()
+            enemiesC[0].ApplyHit(playerHit)
+
+            enemiesC[0].UpdateInflictions()
+            player.UpdateInflictions()
 
 
         else:
-            currentWeapon.SwitchWeapons("", True)
+            player.weapon.SwitchAttacks("", True)
 
             
 
-        fightOn = playerCurrentHealth > 0
+        fightOn = player.currentHealth > 0
         for enemy in enemiesC:
             fightOn = fightOn and enemy.health > 0
 
 
-    if playerCurrentHealth <= 0: 
+    if player.currentHealth <= 0: 
         end()
         return
     else:
@@ -533,7 +646,7 @@ def fightSequence(enemies : Enemy, location):
 
 
 def finalFight():
-    global playerCurrentHealth
+    global player
     print("You open the doors to find Misty tied up to a pole, surrounded by a lake of acidic stuff that you don't even think about messing with. SUDDENLY, \n\
 you hear a loud roar from behind you, and turn to find a scaly creature that towers over you. 'YOUR EFFORTS TO GET HERE ARE ADMIRABLE, MAX. WHICH IS WHY I OFFER YOU THIS DEAL: \n\
 LEAVE NOW AND I WON'T BURN YOU, OR STAY AND END UP BECOMING A MEDIUM-RARE STEAK FOR MY MUTANT MINIONS.' Because you're a stereotypical hero that won't play it safe and leave while your \n\
@@ -545,9 +658,9 @@ body is still at room temperature, you shake your head in disagreement, and get 
     lArm = 50
     finalBlow = 100
     #time.sleep(5)
-    while rLeg > 0 and playerCurrentHealth > 0:
+    while rLeg > 0 and player.currentHealth > 0:
         print("Joshro's right leg's health: ", rLeg) 
-        print("Max's health:", playerCurrentHealth)
+        print("Max's health:", player.currentHealth)
         prompt = input("'hit' or 'dodge'? ") 
         while prompt != "hit" and prompt != "dodge":
             prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ")
@@ -556,18 +669,18 @@ body is still at room temperature, you shake your head in disagreement, and get 
             rLeg -= rLegDamage * weaponStrength 
             print("You hit his right leg and it took " + str(rLegDamage * weaponStrength) + " damage!") 
             playerDamage = random.randint(0,5)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("Joshro razed you and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!")
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
-    while lLeg > 0 and playerCurrentHealth > 0:
+    while lLeg > 0 and player.currentHealth > 0:
         print("Joshro's left leg's health: ", lLeg) 
-        print("Max's health:", playerCurrentHealth)
+        print("Max's health:", player.currentHealth)
         prompt = input("'hit' or 'dodge'? ") 
         while prompt != "hit" and prompt != "dodge":
             prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ")
@@ -576,18 +689,18 @@ body is still at room temperature, you shake your head in disagreement, and get 
             lLeg -= lLegDamage * weaponStrength 
             print("You hit his left leg and it took " + str(lLegDamage * weaponStrength) + " damage!") 
             playerDamage = random.randint(0,10)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("Joshro crushed you and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!")
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
-    while rArm > 0 and playerCurrentHealth > 0:
+    while rArm > 0 and player.currentHealth > 0:
         print("Joshro's right arm's health: ",rArm) 
-        print("Max's health:", playerCurrentHealth)
+        print("Max's health:", player.currentHealth)
         prompt = input("'hit' or 'dodge'? ") 
         while prompt != "hit" and prompt != "dodge":
             prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ")
@@ -596,18 +709,18 @@ body is still at room temperature, you shake your head in disagreement, and get 
             rArm -= rArmDamage * weaponStrength 
             print("You hit his right arm and it took " + str(rArmDamage * weaponStrength) + " damage!") 
             playerDamage = random.randint(0,15)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("Joshro slashed you and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!")
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
-    while lArm > 0 and playerCurrentHealth > 0:
+    while lArm > 0 and player.currentHealth > 0:
         print("Joshro's left arm's health: ", lArm) 
-        print("Max's health: ", playerCurrentHealth)
+        print("Max's health: ", player.currentHealth)
         prompt = input("'hit' or 'dodge'? ") 
         while prompt != "hit" and prompt != "dodge":
             prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ")
@@ -616,21 +729,21 @@ body is still at room temperature, you shake your head in disagreement, and get 
             lArm -= lArmDamage * weaponStrength 
             print("You hit his right arm and it took " + str(lArmDamage * weaponStrength) + " damage!") 
             playerDamage = random.randint(0,20)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("Joshro slammed you and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!")
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
     print("You've weakened Joshro severely, but the fight isn't over yet! You need to attack him directly and land the final blow \n\
 so that Joshro's reign of terror can end once and for all...")
     #time.sleep(5)
-    while finalBlow > 0 and playerCurrentHealth > 0:
+    while finalBlow > 0 and player.currentHealth > 0:
         print("Joshro's health: ", finalBlow) 
-        print("Max's health: ", playerCurrentHealth)
+        print("Max's health: ", player.currentHealth)
         prompt = input("'hit' or 'dodge'? ") 
         while prompt != "hit" and prompt != "dodge":
             prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ")
@@ -639,13 +752,13 @@ so that Joshro's reign of terror can end once and for all...")
             finalBlow -= finalBlowDamage * weaponStrength 
             print("You hit Joshro and he took " + str(finalBlowDamage * weaponStrength) + " damage!") 
             playerDamage = random.randint(10,25)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("Joshro set you on fire and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!")
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
     print("With a thunderous crash, Joshro falls lifeless to the ground with an intense thump. Misty, overjoyed that she's finally been saved, \n\
@@ -656,7 +769,7 @@ You did it! You slayed the dragon and saved the girl, but there are still things
 
 
 def finalFightGuard():
-    global playerCurrentHealth
+    global player
     print("You open the doors to find Misty tied up to a pole, surrounded by a lake of acidic stuff that you don't even think about messing with. SUDDENLY, \n\
 you hear a loud roar from behind you, and turn to find a scaly creature that towers over you. 'YOUR EFFORTS TO GET HERE ARE ADMIRABLE, MAX. WHICH IS WHY I OFFER YOU THIS DEAL: \n\
 LEAVE NOW AND I WON'T BURN YOU, OR STAY AND END UP BECOMING A MEDIUM-RARE STEAK FOR MY MUTANT MINIONS.' Because you're a stereotypical hero that won't play it safe and leave while your \n\
@@ -672,9 +785,9 @@ body is still at room temperature, you shake your head in disagreement, and get 
     leaveMessage = False
     bruceDamage = random.randint(1,10)
     #time.sleep(5)
-    while rLeg > 0 and playerCurrentHealth > 0:
+    while rLeg > 0 and player.currentHealth > 0:
         print("Joshro's right leg's health: ", rLeg) 
-        print("Max's health: ", playerCurrentHealth)
+        print("Max's health: ", player.currentHealth)
         print("Times Bruce will help you: ", bruceHelp)
         prompt = input("'hit' or 'dodge'? ") 
         while prompt != "hit" and prompt != "dodge":
@@ -697,18 +810,18 @@ body is still at room temperature, you shake your head in disagreement, and get 
                     print("Bruce decides to leave after assuming that he's helped enough, leaving you to face the dragon alone!")
                     leaveMessage = True 
             playerDamage = random.randint(0,5)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("Joshro razed you and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!")
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
-    while lLeg > 0 and playerCurrentHealth > 0:
+    while lLeg > 0 and player.currentHealth > 0:
         print("Joshro's left leg's health: ", lLeg) 
-        print("Max's health: ", playerCurrentHealth)
+        print("Max's health: ", player.currentHealth)
         print("Times Bruce will help you:",bruceHelp)
         prompt = input("'hit' or 'dodge'? ") 
         while prompt != "hit" and prompt != "dodge":
@@ -731,18 +844,18 @@ body is still at room temperature, you shake your head in disagreement, and get 
                     print("Bruce decides to leave after assuming that he's helped enough, leaving you to face the dragon alone!")
                     leaveMessage = True
             playerDamage = random.randint(0,10)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("Joshro crushed you and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!")
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
-    while rArm > 0 and playerCurrentHealth > 0:
+    while rArm > 0 and player.currentHealth > 0:
         print("Joshro's right arm's health: ", rArm) 
-        print("Max's health: ", playerCurrentHealth)
+        print("Max's health: ", player.currentHealth)
         print("Times Bruce will help you:",bruceHelp)
         prompt = input("'hit' or 'dodge'? ") 
         while prompt != "hit" and prompt != "dodge":
@@ -765,18 +878,18 @@ body is still at room temperature, you shake your head in disagreement, and get 
                     print("Bruce decides to leave after assuming that he's helped enough, leaving you to face the dragon alone!")
                     leaveMessage = True
             playerDamage = random.randint(0,15)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("Joshro slashed you and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!")
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
-    while lArm > 0 and playerCurrentHealth > 0:
+    while lArm > 0 and player.currentHealth > 0:
         print("Joshro's left arm's health: ", lArm) 
-        print("Max's health: ", playerCurrentHealth)
+        print("Max's health: ", player.currentHealth)
         print("Times Bruce will help you:",bruceHelp)
         prompt = input("'hit' or 'dodge'? ") 
         while prompt != "hit" and prompt != "dodge":
@@ -799,21 +912,21 @@ body is still at room temperature, you shake your head in disagreement, and get 
                     print("Bruce decides to leave after assuming that he's helped enough, leaving you to face the dragon alone!")
                     leaveMessage = True
             playerDamage = random.randint(0,20)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("Joshro slammed you and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!")
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
     print("You've weakened Joshro severely, but the fight isn't over yet! You need to attack him directly and land the final blow \n\
 so that Joshro's reign of terror can end once and for all...")
     #time.sleep(5)
-    while finalBlow > 0 and playerCurrentHealth > 0:
+    while finalBlow > 0 and player.currentHealth > 0:
         print("Joshro's health: ", finalBlow) 
-        print("Max's health: ", playerCurrentHealth)
+        print("Max's health: ", player.currentHealth)
         print("Times Bruce will help you:",bruceHelp)
         prompt = input("'hit' or 'dodge'? ") 
         while prompt != "hit" and prompt != "dodge":
@@ -836,13 +949,13 @@ so that Joshro's reign of terror can end once and for all...")
                     print("Bruce decides to leave after assuming that he's helped enough, leaving you to face the dragon alone!")
                     leaveMessage = True
             playerDamage = random.randint(10,20)
-            playerCurrentHealth -= playerDamage 
+            player.currentHealth -= playerDamage 
             print("Joshro set you on fire and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
             damage = random.randint(0,5) 
-            playerCurrentHealth -= damage 
+            player.currentHealth -= damage 
             print("You dodged the attack and took " + str(damage) + " damage!")
-        if playerCurrentHealth <= 0: 
+        if player.currentHealth <= 0: 
             end()
             return
     print("With a thunderous crash, Joshro falls lifeless to the ground with an intense thump. Misty, overjoyed that she's finally been saved, \n\
@@ -853,7 +966,7 @@ You did it! You slayed the dragon and saved the girl, but there are still things
 
 
 def deadlyTreasure():
-    global playerMaxHealth, playerCurrentHealth
+    global player, player
     print("While walking through the forest, you come across a golden box \n\
 that shimmers in the sunlight. A key lays inside the tree next to the box, \n\
 but the tree hole is too dark for you to see what else is inside the tree.") 
@@ -870,8 +983,8 @@ poisonous spider bites you and everything goes black- forever...")
         elif dieLive == 2 or 3: 
             print("You grab the key quickly, and open the box to find a potion \n\
 that increases your health by 50. You drink it, and continue along the path.") 
-            playerMaxHealth += 50
-            playerCurrentHealth = min(playerMaxHealth, playerCurrentHealth + 50) 
+            player.maxHealth += 50
+            player.currentHealth = min(player.maxHealth, player.currentHealth + 50) 
     elif key == "let it be": 
         print("You decide it's not worth the risk, and continue walking on the \n\
 road.") 
@@ -989,7 +1102,7 @@ def stringWord(emptyStr):
 
 #Two functions in relation to the "caveWatchtower" scene
 def cave():
-    global playerMaxHealth
+    global player
     print("You hesitantly enter the cave, anxious about who or what might await you inside the dark depths. Fortunately, luck \n\
 seems to favor you in this instance, and no trace of another inhabitant is visible inside the damp enclosure. In fact, you find \n\
 a perfectly preserved elixir that has the label 'Miriam's Medical Miracle' stamped in fine lettering across the brownish glass. \n\
@@ -1002,8 +1115,8 @@ Before you take a swig, you doubt how safe ingesting the bottle's contents will 
         if healthNothingdeadly == 1:
             print("You drink the potion, but after sitting down, you instantly pass out. You wake up in the morning feeling strangely \n\
 healthier, and relish in the fact that you now have 50 more health!")
-            playerMaxHealth += 50
-            playerCurrentHealth = min(playerMaxHealth, playerCurrentHealth + 50)
+            player.maxHealth += 50
+            player.currentHealth = min(player.maxHealth, player.currentHealth + 50)
             potionTroll = False
             return potionTroll
         elif healthNothingdeadly == 2:
@@ -1191,33 +1304,42 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 
 #Constant variables:
 #Attacks
-clubBash = Attack(25, 10, 3, "club bash")
-heavyJab = Attack(5, 5, 1, "heavy jab")
+clubBash = Attack([], [], 25, 10, 3, "club bash")
+punch = Attack([], [], 5, 5, 1, "punch")
+
+#Player attacks
+#Bow1
+bow1Shoot = Attack([StatusEffect(InflictionType.BURNING, 2)], [100], 25, 20, 3, "shoot arrow")
+bow1ArrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, 1, "arrow stab")
+#Axe1
+axe1DeepCut = Attack([StatusEffect(InflictionType.BLEED, 15)], [100], 3, 2, 2, "deep cut")
+axe1Finisher = Attack([], [], 25, 0, 2, "finisher")
+#Sword1
+sword1HeavyBlow = Attack([], [], 100, 0, 5, "heavy blow")
+sword1QuickAttack = Attack([], [], 35, 0, 2, "quick attack")
 
 #Weapons
 
 #Globalizing variables
 
-global location, ogre, ogreOld, goblin, goblinOld, troll, mutant, rat, playerMaxHealth, playerCurrentHealth, allIn, weapon, currentWeapon, \
+global location, ogre, ogreOld, goblin, goblinOld, troll, mutant, rat, player, allIn, currentWeapon, \
 weaponChoice, restart, weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr
 restart = True
 
 def main():
-    global location, ogre, ogreOld, goblin, goblinOld, troll, mutant, rat, playerMaxHealth, playerCurrentHealth, allIn, weapon, currentWeapon, \
+    global location, ogre, ogreOld, goblin, goblinOld, troll, mutant, rat, player, allIn, currentWeapon, \
     weaponChoice, restart, weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr
 
     restart = False
-    ogre = Enemy(100, [clubBash, heavyJab], "Ogre")
+    ogre = Enemy(100, [clubBash, punch], "Ogre")
     ogreOld = random.randint(85,115)
-    goblin = Enemy(100, [clubBash, heavyJab], "Goblin")
+    goblin = Enemy(100, [clubBash, punch], "Goblin")
     goblinOld = random.randint(60,90)
     troll = random.randint(100,125)
     mutant = 120
     rat = random.randint(90,110)
-    playerMaxHealth = 150
-    playerCurrentHealth = playerMaxHealth
     allIn = False
-    currentWeapon = Player([clubBash, heavyJab], "Ogre in a bottle")
+    player = Player(150)
     potionTroll = False
     homeChosen = False
     divByfour = [8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]
@@ -1331,10 +1453,10 @@ back after you finish your quest to come work for him to pay off your debt. You 
 You're able to get up, but because of the surprise attack, you've lost valuable health and strength.")
                 goblinFight = True
                 while goblinFight == True:
-                    playerMaxHealth = int(playerMaxHealth/2)
+                    player.maxHealth = int(player.maxHealth/2)
                     weaponStrength = int(weaponStrength/2)
                     fightSequenceOld(goblinOld, location)
-                    playerMaxHealth = int(playerMaxHealth * 2) 
+                    player.maxHealth = int(player.maxHealth * 2) 
                     weaponStrength = int(weaponStrength * 2)
                     goblinFight = False
                 if restart:
@@ -1367,10 +1489,10 @@ back after you finish your quest to come work for him to pay off your debt. You 
 You're able to get up, but because of the surprise attack, you've lost valuable health and strength.")
                     goblinFight = True
                     while goblinFight == True:
-                        playerMaxHealth = int(playerMaxHealth/2)
+                        player.maxHealth = int(player.maxHealth/2)
                         weaponStrength = int(weaponStrength/2)
                         fightSequenceOld(goblinOld, location)
-                        playerMaxHealth = int(playerMaxHealth * 2) 
+                        player.maxHealth = int(player.maxHealth * 2) 
                         weaponStrength = int(weaponStrength * 2)
                         goblinFight = False
                     if restart:
@@ -1538,7 +1660,7 @@ In one of the drawers, you find a damaged note that warns its readers to be wear
         print("Once inside the inn, you eat a hearty meal in the lobby before purchasing a room. As you walk past the many rooms, an old and disheveled man grabs you and warns you to stay weary of the \n\
 'Dragon's Devils'. You push the man off you and hurry to your room. The man's words still linger in your mind, but you shut them off and go to sleep begrudgingly.")
     
-    playerCurrentHealth = playerMaxHealth
+    player.currentHealth = player.maxHealth
 
     #time.sleep(5)
     print(" ")
@@ -1604,10 +1726,10 @@ past the default 100 value, you might not be able to outrun the rambunctious rod
     elif outrunFight == "outrun":
         print("You decide to try your luck and athletic skills by ceasing to fight the rat and instead violently thrash through the water \n\
 to attempt to reach a safe distance.")
-        if playerCurrentHealth > 100:
+        if player.currentHealth > 100:
             print("You end up creating such a large distance between you and the rodent that it eventually just gives up and waddles away in the other direction.")
             emptyStr, strings = stringWord(emptyStr)
-        elif playerCurrentHealth <= 50:
+        elif player.currentHealth <= 50:
             fastNot = random.randint(1,2)
             if fastNot == 1:
                 print("Despite your determination in trying to outrun the creature, it catches up to you and drags you down to the murky depths... \n\
@@ -1618,16 +1740,16 @@ and you never resurface.")
                 print("In a surprising turn of events, you manage to wade quickly enough away from the rat that it decides that you're not worth the trouble, \n\
 and waddles away in the other direction. In the process though you did cut your knee on a rock.")
                 emptyStr, strings = stringWord(emptyStr)
-                if playerCurrentHealth > 25:
-                    playerCurrentHealth -= 25
+                if player.currentHealth > 25:
+                    player.currentHealth -= 25
                 else:
-                    playerCurrentHealth = max(1, min(10, playerCurrentHealth - 10))
+                    player.currentHealth = max(1, min(10, player.currentHealth - 10))
         else:
             fastNot = random.randint(1,2)
             if fastNot == 1:
                 print("Despite your determination in trying to outrun the creature.\n\
 However, it doesn't fully defeat you when it catches up with you, and as such you are forced to fight it.")
-                playerCurrentHealth -= 50
+                player.currentHealth -= 50
                 fightSequenceOld(rat, location)
                 if restart:
                     return
@@ -1635,7 +1757,7 @@ However, it doesn't fully defeat you when it catches up with you, and as such yo
             else:
                 print("In a surprising turn of events, you manage to wade quickly enough away from the rat that it decides that you're not worth the trouble, \n\
 and waddles away in the other direction. In the process though your knee got cut by a rock.")
-                playerCurrentHealth -= 25
+                player.currentHealth -= 25
     #time.sleep(5)
     print(" ")
     print("++++++++++++++++")
@@ -1654,7 +1776,7 @@ and continue on your way to the armory.")
     print(" ")
     print("Once reaching the armory, you insert the key and quietly let yourself inside the armory. The armor present will do more than enough to hide your non-mutant \n\
 appearance, and, in addition to that, offers more protection.")
-    playerMaxHealth += 50
+    player.maxHealth += 50
     print("Approaching the keep, you see a human guard ahead that won't move no matter what distractions you use to guide him away. After some impatient waiting, you conclude \n\
 that the only way to enter the keep is through a direct encounter with the guard. A fight is inevitable, but the only question now is *how* the interaction with the guard will end...")
     morality = guardFightsequence()
@@ -1710,8 +1832,8 @@ you crack your knuckles and massage your forehead in preparation for the mind-nu
         if askString == "string":
             print("You got it! The sorcerer smiles with admiration as he hands you the obviously enlarged and luxurious potion full of fizzling bubbles. \n\
 You drink it, and bask in the glory that is being a nonviolent person before heading to the door separating you from the girl you came to save and the unjust creature you must stop...")
-            playerMaxHealth += 100
-            playerCurrentHealth = playerMaxHealth
+            player.maxHealth += 100
+            player.currentHealth = player.maxHealth
             stringCorrect = True
         else:
             print("******")
@@ -1722,8 +1844,8 @@ You drink it, and bask in the glory that is being a nonviolent person before hea
             if askString == "string":
                 print("You got it! The sorcerer smiles with admiration as he hands you the obviously enlarged and luxurious potion full of fizzling bubbles. \n\
     You drink it, and bask in the glory that is being a nonviolent person before heading to the door separating you from the girl you came to save and the unjust creature you must stop...")
-                playerMaxHealth += 100
-                playerCurrentHealth = playerMaxHealth
+                player.maxHealth += 100
+                player.currentHealth = player.maxHealth
                 stringCorrect = True
             else:
                 print("******")
@@ -1734,8 +1856,8 @@ You drink it, and bask in the glory that is being a nonviolent person before hea
             if askString == "string":
                 print("You got it! The sorcerer smiles with admiration as he hands you the obviously enlarged and luxurious potion full of fizzling bubbles. \n\
 You drink it, and bask in the glory that is being a nonviolent person before heading to the door separating you from the girl you came to save and the unjust creature you must stop...")
-                playerMaxHealth += 100
-                playerCurrentHealth = playerMaxHealth
+                player.maxHealth += 100
+                player.currentHealth = player.maxHealth
                 stringCorrect = True
             elif askString != "string":
                 print("You didn't guess the word, and sulk about it before heading to the door separating you from the girl you came to save and the tyrannical creature you must defeat...")
