@@ -191,7 +191,7 @@ class Enemy:
 
 
         else:
-            hit = Hit(0, [], 0)
+            hit = Hit(0, [], currentIndex)
             if self.CurrentAttack().length - self.CurrentAttack().timeSinceStart > 1:
                 print(self.name + " continues to prepare their " + self.CurrentAttack().name + ". They have " + str(self.CurrentAttack().length - self.CurrentAttack().timeSinceStart) + " turns left.")
             else:
@@ -203,8 +203,9 @@ class Enemy:
     def ApplyHit(self, hit : Hit):
         self.health -= hit.damage
         self.inflictions.extend(deepcopy(hit.inflictions))
-        for i in range(len(hit.inflictions)):
-            self.inflictionAttackers.append(hit.attacker)
+        # for i in range(len(hit.inflictions)):
+        #     self.inflictionAttackers.append(deepcopy(hit.attacker))
+        self.inflictionAttackers.extend([hit.attacker] * len(hit.inflictions))
 
     def UpdateInflictions(self):
         destroyedThisFrame = 0
@@ -333,8 +334,9 @@ class Player:
     def ApplyHit(self, hit : Hit):
         self.currentHealth -= hit.damage
         self.inflictions.extend(deepcopy(hit.inflictions))
-        for i in range(len(hit.inflictions)):
-            self.inflictionAttackers.append(hit.attacker)
+        # for i in range(len(hit.inflictions)):
+        #     self.inflictionAttackers.append(deepcopy(hit.attacker))
+        self.inflictionAttackers.extend([hit.attacker] * len(hit.inflictions))
 
     def UpdateInflictions(self):
         destroyedThisFrame = 0
@@ -647,11 +649,11 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                 enemyHit = enemiesC[i].TakeTurn(i)
                 unblockedDamage += enemyHit.damage
                 damageDelt = floor(enemyHit.damage / 2)
+                blockedDamage += damageDelt
                 heal = int(floor(float(damageDelt) * enemiesC[i].leech))
                 if heal != 0:
                     print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
                     enemiesC[i].health += heal
-                blockedDamage += damageDelt
                 player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i))
                 print("")
 
@@ -669,7 +671,7 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
 
             damageDealer, inflictionDamageDelt = player.UpdateInflictions()
             for i in range(len(inflictionDamageDelt)):
-                heal = int(floor(float(inflictionDamageDelt[i].damage) * enemiesC[damageDealer[i]].leech))
+                heal = int(floor(float(inflictionDamageDelt[i]) * enemiesC[damageDealer[i]].leech))
                 if heal != 0:
                     print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of inflictions")
                     enemiesC[damageDealer[i]].health += heal
@@ -677,6 +679,7 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
 
         elif prompt == "attack":
             print("")
+            print("TEST - " + str(len(enemiesC)))
             for i in range(len(enemiesC)):
                 enemyHit = enemiesC[i].TakeTurn(i)
                 player.ApplyHit(enemyHit)
@@ -702,6 +705,9 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
 
             damageDealer, inflictionDamageDelt = player.UpdateInflictions()
             for i in range(len(inflictionDamageDelt)):
+                print("TEMP - " + str(damageDealer[i]))
+                print("TEMP2 - " + str(enemiesC[damageDealer[i]].leech))
+                print("TEMP3 - " + str(inflictionDamageDelt[i]))
                 heal = int(floor(float(inflictionDamageDelt[i]) * enemiesC[damageDealer[i]].leech))
                 if heal != 0:
                     print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of inflictions")
@@ -730,9 +736,9 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
         for i in range(len(enemiesC)):
             if enemiesC[i - enemiesRemovedThisFrame].health <= 0:
                 print(enemiesC[i - enemiesRemovedThisFrame].name + " has been defeated.")
-                
+
                 inflictionsRemovedThisFrame = 0
-                for j in range(len(player.inflictions)):
+                for j in range(len(player.inflictionAttackers)):
                     if player.inflictionAttackers[j - inflictionsRemovedThisFrame] > i - enemiesRemovedThisFrame:
                         player.inflictionAttackers[j - inflictionsRemovedThisFrame] -= 1
                     elif player.inflictionAttackers[j - inflictionsRemovedThisFrame] == i - enemiesRemovedThisFrame:
@@ -778,6 +784,7 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
             print(outroMessages[4]) 
 
     player.inflictions.clear()
+    player.inflictionAttackers.clear()
     player.currentHealth = min(player.maxHealth, player.currentHealth + 50)
 
 
