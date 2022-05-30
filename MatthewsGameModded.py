@@ -8,11 +8,8 @@ I hope that you enjoy this experience, and if you want, maybe you'll even mod th
 from copy import deepcopy # This lets us pass lists that aren't references.
 from enum import Enum # This lets me use enum classes, and they look nice. =]
 from math import *
-from os import unlink
 import random
 import time
-
-from numpy import block
 
 
 
@@ -46,37 +43,34 @@ class Infliction:
         self.effect = effect
 
     def FindDamage(self):
-        match self.effect:
-            case InflictionType.POISON:
-                return 2
-            case InflictionType.BLEED:
-                return 3
-            case InflictionType.BURNING:
-                return 10
-            case InflictionType.DEADLY_HUG:
-                return 1
+        if self.effect ==  InflictionType.POISON:
+            return 2
+        elif self.effect == InflictionType.BLEED:
+            return 3
+        elif self.effect == InflictionType.BURNING:
+            return 10
+        elif self.effect == InflictionType.DEADLY_HUG:
+            return 1
 
     def DeathDamage(self):
-        match self.effect:
-            case InflictionType.POISON:
-                return 2
-            case InflictionType.BLEED:
-                return 1
-            case InflictionType.BURNING:
-                return 5
-            case InflictionType.DEADLY_HUG:
-                return 10
+        if self.effect ==  InflictionType.POISON:
+            return 2
+        elif self.effect == InflictionType.BLEED:
+            return 1
+        elif self.effect == InflictionType.BURNING:
+            return 5
+        elif self.effect == InflictionType.DEADLY_HUG:
+            return 10
 
     def FindName(self):
-        match self.effect:
-            case InflictionType.POISON:
-                return "poison"
-            case InflictionType.BLEED:
-                return "bleed"
-            case InflictionType.BURNING:
-                return "burning"
-            case InflictionType.DEADLY_HUG:
-                return "deadly hug"
+        if self.effect ==  InflictionType.POISON:
+            return "poison"
+        elif self.effect == InflictionType.BLEED:
+            return "bleed"
+        elif self.effect == InflictionType.BURNING:
+            return "burning"
+        elif self.effect == InflictionType.DEADLY_HUG:
+            return "deadly hug"
 
 
 
@@ -1263,7 +1257,11 @@ Before you take a swig, you doubt how safe ingesting the bottle's contents will 
     drinkDroptake = input("Do you 'drink' or 'drop' or 'take' the bottle? ")
     while drinkDroptake != "drink" and drinkDroptake != "drop" and drinkDroptake != "take":
         drinkDroptake = input("That won't work this time! Do you 'drink' or 'drop' or 'take' the bottle? ")
-    if drinkDroptake == "drink":
+    if player.weapon.name == "Pet Slime":
+        print("But before being able to do anything,\n\
+your slime pet jumps from your bag and consumbes the entire bottle, glass included. Slime Pet has learned 'slime spike'")
+        player.weapon = Weapon([slimeHug, slimeSpike], "Neurished Pet Slime", 1.0)
+    elif drinkDroptake == "drink":
         healthNothingdeadly = random.randint(1,3)
         if healthNothingdeadly == 1:
             print("You drink the potion, but after sitting down, you instantly pass out. You wake up in the morning feeling strangely \n\
@@ -1467,10 +1465,11 @@ punch = Attack([], [], 5, 5, 1, "punch")
 quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, 1, "quick stab")
 rockThrow = Attack([], [50], 5, 5, 1, "rock throw")
 slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, 1, "slime hug")
+slimeSpike = Attack([StatusEffect(InflictionType.BLEED, 3)], [100], 5, 0, 1, "slime spike")
 
 #Player attacks
 #Bow1
-bow1Shoot = Attack([StatusEffect(InflictionType.BURNING, 2)], [100], 25, 20, 3, "shoot arrow")
+bow1Shoot = Attack([StatusEffect(InflictionType.BURNING, 4)], [100], 35, 10, 3, "shoot arrow")
 bow1ArrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, 1, "arrow stab")
 #Axe1
 axe1DeepCut = Attack([StatusEffect(InflictionType.BLEED, 15)], [100], 3, 2, 2, "deep cut")
@@ -1725,6 +1724,7 @@ quietly to continue your journey.")
 you disrespect my bridge, and then you don't even give me something for my dehydration! This won't do! I'm going to have to teach you a lesson in manners!")
             print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
+            fightSequence([deepcopy(ogre), deepcopy(ogre)], location, [[]])
             fightSequenceOld(troll, location)
             if restart:
                 return
@@ -1737,6 +1737,7 @@ you blank out, and the troll notices this. 'WOW! So first you disrespect my brid
 This won't do! I'm going to have to teach you a lesson in manners!")
         print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
+        fightSequence([deepcopy(ogre), deepcopy(ogre)], location, [[]])
         fightSequenceOld(troll, location)
         if restart:
             return
