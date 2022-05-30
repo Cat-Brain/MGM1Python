@@ -209,7 +209,13 @@ class Enemy:
 
     def UpdateInflictions(self):
         destroyedThisFrame = 0
+
         damageFromSources = [0] * len(self.inflictionAttackers)
+
+        respectiveNames = [""] * len(self.inflictionAttackers)
+        for i in range(len(self.inflictions)):
+            respectiveNames[i] = self.inflictions[i].Name()
+
         orinalInflictionAttackers = deepcopy(self.inflictionAttackers)
 
         for i in range(len(self.inflictions)):
@@ -229,7 +235,7 @@ class Enemy:
                 else:
                     print(self.name + " is inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone next turn.")
 
-        return orinalInflictionAttackers, damageFromSources
+        return orinalInflictionAttackers, damageFromSources, respectiveNames
 
 
 
@@ -340,7 +346,13 @@ class Player:
 
     def UpdateInflictions(self):
         destroyedThisFrame = 0
+
         damageFromSources = [0] * len(self.inflictionAttackers)
+
+        respectiveNames = [""] * len(self.inflictionAttackers)
+        for i in range(len(self.inflictions)):
+            respectiveNames[i] = self.inflictions[i].Name()
+
         orinalInflictionAttackers = deepcopy(self.inflictionAttackers)
 
         for i in range(len(self.inflictions)):
@@ -360,7 +372,7 @@ class Player:
                 else:
                     print("You're inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone next turn.")
         
-        return orinalInflictionAttackers, damageFromSources
+        return orinalInflictionAttackers, damageFromSources, respectiveNames
 
         
 
@@ -661,25 +673,24 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
             print("")
 
             for i in range(len(enemiesC)):
-                ignored, inflictionDamageDelt = enemiesC[i].UpdateInflictions()
-                for damage in inflictionDamageDelt:
-                    heal = int(floor(float(damage) * player.weapon.leech))
+                ignored, inflictionDamageDelt, respectiveNames = enemiesC[i].UpdateInflictions()
+                for j in range(len(inflictionDamageDelt)):
+                    heal = int(floor(float(inflictionDamageDelt[j]) * player.weapon.leech))
                     if heal != 0:
-                        print("You heal off of " + enemiesC[i].name + " for " + str(heal) + " because of inflictions")
-                        player.currentHealth += heal
+                        print("You heal off of " + enemiesC[i].name + " for " + str(heal) + " because of " + respectiveNames[j] + ".")
+                        player.currentHealth = min(player.maxHealth, player.currentHealth + heal)
                 print("")
 
-            damageDealer, inflictionDamageDelt = player.UpdateInflictions()
-            for i in range(len(inflictionDamageDelt)):
+            damageDealer, inflictionDamageDelt, respectiveNames = player.UpdateInflictions()
+            for i in range(len(damageDealer)):
                 heal = int(floor(float(inflictionDamageDelt[i]) * enemiesC[damageDealer[i]].leech))
                 if heal != 0:
-                    print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of inflictions")
+                    print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of " + respectiveNames[i] + ".")
                     enemiesC[damageDealer[i]].health += heal
 
 
         elif prompt == "attack":
             print("")
-            print("TEST - " + str(len(enemiesC)))
             for i in range(len(enemiesC)):
                 enemyHit = enemiesC[i].TakeTurn(i)
                 player.ApplyHit(enemyHit)
@@ -695,22 +706,19 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
             print("")
 
             for i in range(len(enemiesC)):
-                ignored, inflictionDamageDelt = enemiesC[i].UpdateInflictions()
-                for damage in inflictionDamageDelt:
-                    heal = int(floor(float(damage) * player.weapon.leech))
+                ignored, inflictionDamageDelt, respectiveNames = enemiesC[i].UpdateInflictions()
+                for j in range(len(inflictionDamageDelt)):
+                    heal = int(floor(float(inflictionDamageDelt[j]) * player.weapon.leech))
                     if heal != 0:
-                        print("You heal off of " + enemiesC[i].name + " for " + str(heal) + " because of inflictions")
-                        player.currentHealth += heal
+                        print("You heal off of " + enemiesC[i].name + " for " + str(heal) + " because of " + respectiveNames[j] + ".")
+                        player.currentHealth = min(player.maxHealth, player.currentHealth + heal)
                 print("")
 
-            damageDealer, inflictionDamageDelt = player.UpdateInflictions()
-            for i in range(len(inflictionDamageDelt)):
-                print("TEMP - " + str(damageDealer[i]))
-                print("TEMP2 - " + str(enemiesC[damageDealer[i]].leech))
-                print("TEMP3 - " + str(inflictionDamageDelt[i]))
+            damageDealer, inflictionDamageDelt, respectiveNames = player.UpdateInflictions()
+            for i in range(len(damageDealer)):
                 heal = int(floor(float(inflictionDamageDelt[i]) * enemiesC[damageDealer[i]].leech))
                 if heal != 0:
-                    print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of inflictions")
+                    print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of " + respectiveNames[i] + ".")
                     enemiesC[damageDealer[i]].health += heal
 
 
