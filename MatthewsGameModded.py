@@ -32,6 +32,7 @@ class InflictionType(Enum):
     BLEED = 1
     BURNING = 2
     DEADLY_HUG = 3
+    STUN = 4
     #Insert more status effects here.
 
 
@@ -51,6 +52,10 @@ class Infliction:
             return 10
         elif self.effect == InflictionType.DEADLY_HUG:
             return 1
+        elif self.effect == InflictionType.STUN:
+            return 0
+        else:
+            return 0
 
     def DeathDamage(self):
         if self.effect ==  InflictionType.POISON:
@@ -61,6 +66,10 @@ class Infliction:
             return 5
         elif self.effect == InflictionType.DEADLY_HUG:
             return 10
+        elif self.effect == InflictionType.STUN:
+            return 0
+        else:
+            return 0
 
     def FindName(self):
         if self.effect ==  InflictionType.POISON:
@@ -71,6 +80,10 @@ class Infliction:
             return "burning"
         elif self.effect == InflictionType.DEADLY_HUG:
             return "deadly hug"
+        elif self.effect == InflictionType.STUN:
+            return "stun"
+        else:
+            return "NULL INFLICTION TYPE"
 
 
 
@@ -289,6 +302,9 @@ class Weapon:
                         inputedAttack = currentAttack
             
             self.ChangeAttackTo(inputedAttack)
+
+    def LearnAttack(self, attack : Attack):
+        self.attacks.append(attack)
     
 
 
@@ -331,11 +347,13 @@ class Player:
 
         return hit
 
-    def ApplyHit(self, hit : Hit):
+    def ApplyHit(self, hit : Hit, dodged : bool):
         self.currentHealth -= hit.damage
-        self.inflictions.extend(deepcopy(hit.inflictions))
-        # for i in range(len(hit.inflictions)):
-        #     self.inflictionAttackers.append(deepcopy(hit.attacker))
+        for infliction in deepcopy(hit.inflictions):
+            if infliction.effect.effect != InflictionType.STUN or not dodged:
+                self.inflictions.append(infliction)
+            else:
+                print("Because you blocked you didn't get stunned.")
         self.inflictionAttackers.extend([hit.attacker] * len(hit.inflictions))
 
     def UpdateInflictions(self):
@@ -367,6 +385,12 @@ class Player:
                     print("You're inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone next turn.")
         
         return orinalInflictionAttackers, damageFromSources, respectiveNames
+
+    def IsStunned(self):
+        for infliction in self.inflictions:
+            if infliction.effect.effect == InflictionType.STUN:
+                return True
+        return False
 
         
 
@@ -409,7 +433,7 @@ They're quick weapons that do damage over time, and accumulate their damage inst
         print("A steel longsword.\n\
 It does high damage, but does all of it's damage upfront and as such does less damage on tankier foes, but is good at small foes.")
     elif weaponChoice == "ogre in a bottle":
-        player.weapon = Weapon([clubBash, punch], "Ogre in a bottle", 0.0)
+        player.weapon = Weapon([clubBash, punch], "Ogre in a Bottle", 0.0)
         weaponStrength = 1000
         print("BONK")
 
@@ -649,22 +673,35 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
 
         if prompt == "dodge":
             print("")
-            unblockedDamage = 0
-            blockedDamage = 0
-            for i in range(len(enemiesC)):
-                enemyHit = enemiesC[i].TakeTurn(i)
-                unblockedDamage += enemyHit.damage
-                damageDelt = floor(enemyHit.damage / 2)
-                blockedDamage += damageDelt
-                heal = int(floor(float(damageDelt) * enemiesC[i].leech))
-                if heal != 0:
-                    print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                    enemiesC[i].health += heal
-                player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i))
+            stunned = player.IsStunned()
+            if not stunned:
+                unblockedDamage = 0
+                blockedDamage = 0
+                for i in range(len(enemiesC)):
+                    enemyHit = enemiesC[i].TakeTurn(i)
+                    unblockedDamage += enemyHit.damage
+                    damageDelt = floor(enemyHit.damage / 2)
+                    blockedDamage += damageDelt
+                    heal = int(floor(float(damageDelt) * enemiesC[i].leech))
+                    if heal != 0:
+                        print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
+                        enemiesC[i].health += heal
+                    player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i), True)
+                    print("")
+
+                print("You dodged the attack and took " + str(blockedDamage) + " damage instead of taking " + str(unblockedDamage) + " damage!")
                 print("")
 
-            print("You dodged the attack and took " + str(blockedDamage) + " damage instead of taking " + str(unblockedDamage) + " damage!")
-            print("")
+            else:
+                for i in range(len(enemiesC)):
+                    enemyHit = enemiesC[i].TakeTurn(i)
+                    player.ApplyHit(enemyHit, False)
+                    heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
+                    if heal != 0:
+                        print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
+                        enemiesC[i].health += heal
+                    print("")
+                print("Becuase you were stunned you didn't block.\n")
 
             for i in range(len(enemiesC)):
                 ignored, inflictionDamageDelt, respectiveNames = enemiesC[i].UpdateInflictions()
@@ -687,17 +724,20 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
             print("")
             for i in range(len(enemiesC)):
                 enemyHit = enemiesC[i].TakeTurn(i)
-                player.ApplyHit(enemyHit)
+                player.ApplyHit(enemyHit, False)
                 heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                 if heal != 0:
                     print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
                     enemiesC[i].health += heal
                 print("")
 
-            playerHit = player.TakeTurn()
-            enemiesC[target].ApplyHit(playerHit)
-            player.currentHealth += int(floor(float(playerHit.damage) * player.weapon.leech))
-            print("")
+            if not player.IsStunned():
+                playerHit = player.TakeTurn()
+                enemiesC[target].ApplyHit(playerHit)
+                player.currentHealth += int(floor(float(playerHit.damage) * player.weapon.leech))
+                print("")
+            else:
+                print("Becuase you were stunned you didn't attack.\n")
 
             for i in range(len(enemiesC)):
                 ignored, inflictionDamageDelt, respectiveNames = enemiesC[i].UpdateInflictions()
@@ -1259,8 +1299,10 @@ Before you take a swig, you doubt how safe ingesting the bottle's contents will 
         drinkDroptake = input("That won't work this time! Do you 'drink' or 'drop' or 'take' the bottle? ")
     if player.weapon.name == "Pet Slime":
         print("But before being able to do anything,\n\
-your slime pet jumps from your bag and consumbes the entire bottle, glass included. Slime Pet has learned 'slime spike'")
+your slime pet jumps from your bag and consumes the entire bottle, glass included. Slime Pet has learned 'slime spike'")
         player.weapon = Weapon([slimeHug, slimeSpike], "Neurished Pet Slime", 1.0)
+        potionTroll = False
+        return potionTroll
     elif drinkDroptake == "drink":
         healthNothingdeadly = random.randint(1,3)
         if healthNothingdeadly == 1:
@@ -1460,10 +1502,10 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 #StatusEffect(InflictionType.YOURINFLICTION, how long you want it to last)
 #The syntax for an attacks is:
 #Attack([Status effects], [chance of each status effect happening], damage, damage randomness (how far from the original value the actual value can be), turns to do, name)
-clubBash = Attack([], [], 25, 10, 3, "club bash")
+clubBash = Attack([StatusEffect(InflictionType.STUN, 1)], [100], 25, 10, 3, "club bash")
 punch = Attack([], [], 5, 5, 1, "punch")
 quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, 1, "quick stab")
-rockThrow = Attack([], [50], 5, 5, 1, "rock throw")
+rockThrow = Attack([StatusEffect(InflictionType.STUN, 1)], [25], 5, 5, 1, "rock throw")
 slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, 1, "slime hug")
 slimeSpike = Attack([StatusEffect(InflictionType.BLEED, 3)], [100], 5, 0, 1, "slime spike")
 
@@ -1477,8 +1519,6 @@ axe1Finisher = Attack([], [], 25, 0, 2, "finisher")
 #Sword1
 sword1HeavyBlow = Attack([], [], 100, 0, 5, "heavy blow")
 sword1QuickAttack = Attack([], [], 35, 0, 2, "quick attack")
-
-#Weapons
 
 #Globalizing variables
 
@@ -1621,8 +1661,13 @@ You're able to get up, but because of the surprise attack, you've lost valuable 
                     weaponStrength = int(weaponStrength * 2)
                     goblinFight = False
                     if (specialFightEnding):
-                        player.weapon = Weapon([slimeHug], "Pet Slime", 1.0)
+                        hadBONK = player.weapon.name == "Ogre in a Bottle"
                         print("Oddly enough, you have now seemingly befriended the pet slime. The Pet Slime has replaced your weapon.")
+                        player.weapon = Weapon([slimeHug], "Pet Slime", 1.0)
+                        if hadBONK:
+                            print("After taking the place as your weapon, the Slime Pet decides that it should eat your old Ogre in a Bottle.\n\
+After doing this, your Slime Pet learns a new skill, club bash.")
+                            player.weapon.LearnAttack(clubBash)
                         print("And after seeing this beautiful sight 2 disgusted goblins jump out of the trees to take you on.")
                         location = "forest2"
                         fightSequence([deepcopy(goblin), deepcopy(goblin)], location, [[]])
