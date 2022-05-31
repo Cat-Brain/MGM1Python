@@ -33,6 +33,7 @@ class InflictionType(Enum):
     BURNING = 2
     DEADLY_HUG = 3
     STUN = 4
+    WET = 5
     #Insert more status effects here.
 
 
@@ -54,6 +55,8 @@ class Infliction:
             return 1
         elif self.effect == InflictionType.STUN:
             return 0
+        elif self.effect == InflictionType.WET:
+            return 0
         else:
             return 0
 
@@ -68,6 +71,24 @@ class Infliction:
             return 10
         elif self.effect == InflictionType.STUN:
             return 0
+        elif self.effect == InflictionType.WET:
+            return 0
+        else:
+            return 0
+
+    def FindDamageReduction(self):
+        if self.effect ==  InflictionType.POISON:
+            return 0
+        elif self.effect == InflictionType.BLEED:
+            return 0
+        elif self.effect == InflictionType.BURNING:
+            return 0
+        elif self.effect == InflictionType.DEADLY_HUG:
+            return 0
+        elif self.effect == InflictionType.STUN:
+            return 0
+        elif self.effect == InflictionType.WET:
+            return 5
         else:
             return 0
 
@@ -82,6 +103,8 @@ class Infliction:
             return "deadly hug"
         elif self.effect == InflictionType.STUN:
             return "stun"
+        elif self.effect == InflictionType.WET:
+            return "wet"
         else:
             return "NULL INFLICTION TYPE"
 
@@ -103,6 +126,9 @@ class StatusEffect:
             self.shouldBeDestroyed = True
             return self.effect.DeathDamage()
         return self.effect.FindDamage()
+
+    def Reduction(self):
+        return self.effect.FindDamageReduction()
 
     def Name(self):
         return self.effect.FindName()
@@ -141,13 +167,13 @@ class Attack:
         self.name = name
         self.timeSinceStart = 0
 
-    def RollDamage(self, currentIndex : int):
+    def RollDamage(self, currentIndex : int, damageReduction : int):
         inflictions = []
         for i in range(len(self.procs)):
             if random.randint(1, 100) <= self.procChances[i]:
                 inflictions.append(self.procs[i])
 
-        return Hit(random.randint(self.damage - self.damageRand, self.damage + self.damageRand), inflictions, currentIndex)
+        return Hit(max(0, random.randint(self.damage - self.damageRand, self.damage + self.damageRand) - damageReduction), inflictions, currentIndex)
 
 
 
@@ -181,11 +207,17 @@ class Enemy:
         else:
             print(self.name + " starts preparing " + self.CurrentAttack().name + " It'll be done next turn.")
 
+    def FindDamageReduction(self):
+        damageReduction = 0
+        for infliction in self.inflictions:
+            damageReduction += infliction.Reduction()
+        return damageReduction
+
     def TakeTurn(self, currentIndex : int):
         hit : Hit
 
         if self.CurrentAttack().length <= self.CurrentAttack().timeSinceStart:
-            hit = self.CurrentAttack().RollDamage(currentIndex)
+            hit = self.CurrentAttack().RollDamage(currentIndex, self.FindDamageReduction())
             if hit.damage != 0 or hit.inflictions != []:
                 print(self.name + " does " + self.CurrentAttack().name + ". This attack deals " + str(hit.damage) + " damage.")
                 for infliction in hit.inflictions:
@@ -327,11 +359,17 @@ class Player:
         self.maxHealth = maxHealth
         self.currentHealth = maxHealth
 
+    def FindDamageReduction(self):
+        damageReduction = 0
+        for infliction in self.inflictions:
+            damageReduction += infliction.Reduction()
+        return damageReduction
+
     def TakeTurn(self):
         hit : Hit
 
         if self.weapon.CurrentAttack().length <= self.weapon.CurrentAttack().timeSinceStart:
-            hit = self.weapon.CurrentAttack().RollDamage(0)
+            hit = self.weapon.CurrentAttack().RollDamage(0, self.FindDamageReduction())
             if hit.damage != 0 or hit.inflictions != []:
                 print("Max uses their " + self.weapon.name + " and does " + self.weapon.CurrentAttack().name + ". This attack deals " + str(hit.damage) + " damage.")
                 for infliction in hit.inflictions:
@@ -425,19 +463,19 @@ def weaponSelect():
     global player, weaponChoice, weaponStrength
 
     if weaponChoice == "bow": 
-        player.weapon = Weapon([bow1Shoot, bow1ArrowStab], "Bow", 0.0)
+        player.weapon = Weapon([arrowShoot, arrowStab], "Bow", 0.0)
         weaponStrength = 6
         print("A standard bow.\n\
 It's a slow weapon that stays inside of enemies and damages them over time.")
 
 
     elif weaponChoice == "axe":
-        player.weapon = Weapon([axe1DeepCut, axe1Finisher], "Axe", 0.0)
+        player.weapon = Weapon([deepCut, finisher], "Axe", 0.0)
         weaponStrength = 8
         print("A pair of small battle axes.\n\
 They're quick weapons that do damage over time, and accumulate their damage instead of giving it to you upfront, good at single target.") 
     elif weaponChoice == "sword":
-        player.weapon = Weapon([sword1HeavyBlow, sword1QuickAttack], "Sword", 0.0)
+        player.weapon = Weapon([heavyBlow, quickAttack], "Sword", 0.0)
         weaponStrength = 10 
         print("A steel longsword.\n\
 It does high damage, but does all of it's damage upfront and as such does less damage on tankier foes, but is good at small foes.")
@@ -683,10 +721,10 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
         if prompt == "dodge":
             print("")
             stunned = player.IsStunned()
-            if not stunned:
-                unblockedDamage = 0
-                blockedDamage = 0
-                for i in range(len(enemiesC)):
+            for i in range(len(enemiesC)):
+                if not stunned or not player.IsStunned():
+                    unblockedDamage = 0
+                    blockedDamage = 0
                     if not enemiesC[i].IsStunned():
                         enemyHit = enemiesC[i].TakeTurn(i)
                         unblockedDamage += enemyHit.damage
@@ -697,15 +735,12 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                             print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
                             enemiesC[i].health += heal
                         player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i), True)
+                        print("You dodged the attack and took " + str(blockedDamage) + " damage instead of taking " + str(unblockedDamage) + " damage!")
                     else:
                         print(enemiesC[i].name + " did not attack this round as they were stunned.")
                     print("")
 
-                print("You dodged the attack and took " + str(blockedDamage) + " damage instead of taking " + str(unblockedDamage) + " damage!")
-                print("")
-
-            else:
-                for i in range(len(enemiesC)):
+                else:
                     if not enemiesC[i].IsStunned():
                         enemyHit = enemiesC[i].TakeTurn(i)
                         player.ApplyHit(enemyHit, False)
@@ -713,10 +748,10 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                         if heal != 0:
                             print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
                             enemiesC[i].health += heal
+                        print("Becuase you were stunned you didn't block.\n")
                     else:
                         print(enemiesC[i].name + " did not attack this round as they were stunned.")
                     print("")
-                print("Becuase you were stunned you didn't block.\n")
 
             for i in range(len(enemiesC)):
                 ignored, inflictionDamageDelt, respectiveNames = enemiesC[i].UpdateInflictions()
@@ -1183,18 +1218,11 @@ but the tree hole is too dark for you to see what else is inside the tree.")
     key = input("Do you 'take the key' or 'let it be'? ")
     while key != "take the key" and key != "let it be":
         key = input("That won't work this time! Do you 'take the key' or 'let it be'? ")
-    dieLive = random.randint(1,3)
     if key == "take the key": 
-        if dieLive == 1: 
-            print("You reach inside the hole to grab the key, but a \n\
-poisonous spider bites you and everything goes black- forever...") 
-            end() 
-            return
-        elif dieLive == 2 or 3: 
-            print("You grab the key quickly, and open the box to find a potion \n\
+        print("You grab the key quickly, thinking that history favors the bold, and open the box to find a potion \n\
 that increases your health by 50. You drink it, and continue along the path.") 
-            player.maxHealth += 50
-            player.currentHealth = min(player.maxHealth, player.currentHealth + 50) 
+        player.maxHealth += 50
+        player.currentHealth = min(player.maxHealth, player.currentHealth + 50) 
     elif key == "let it be": 
         print("You decide it's not worth the risk, and continue walking on the \n\
 road.") 
@@ -1398,9 +1426,9 @@ uneventful, and you wake up feeling strangely refreshed after having that small 
     pythonrandWepstrength = random.randint(0,100)
     weaponStrength = pythonrandWepstrength
     if player.weapon.name == "Pet Slime":
-        player.weapon.LearnAttack(python1HeaviestBlow)
+        player.weapon.LearnAttack(heaviestBlow)
     else:
-        player.weapon = Weapon([python1HeaviestBlow, sword1QuickAttack], "Python", 0.5)
+        player.weapon = Weapon([heaviestBlow, quickAttack], "Python", 0.5)
     return weaponStrength
 
 
@@ -1535,19 +1563,13 @@ quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, 1, "qui
 rockThrow = Attack([StatusEffect(InflictionType.STUN, 1)], [25], 5, 5, 1, "rock throw")
 slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, 1, "slime hug")
 slimeSpike = Attack([StatusEffect(InflictionType.BLEED, 3)], [100], 5, 0, 1, "slime spike")
-
-#Player attacks
-#Bow1
-bow1Shoot = Attack([StatusEffect(InflictionType.BURNING, 4)], [100], 35, 10, 3, "shoot arrow")
-bow1ArrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, 1, "arrow stab")
-#Axe1
-axe1DeepCut = Attack([StatusEffect(InflictionType.BLEED, 15)], [100], 3, 2, 2, "deep cut")
-axe1Finisher = Attack([], [], 25, 0, 2, "finisher")
-#Sword1
-sword1HeavyBlow = Attack([], [], 100, 0, 5, "heavy blow")
-sword1QuickAttack = Attack([], [], 35, 0, 2, "quick attack")
-#Python1
-python1HeaviestBlow = Attack([], [], 125, 0, 6, "heaviest blow")
+arrowShoot = Attack([StatusEffect(InflictionType.BURNING, 4)], [100], 35, 10, 3, "shoot arrow")
+arrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, 1, "arrow stab")
+deepCut = Attack([StatusEffect(InflictionType.BLEED, 15)], [100], 3, 2, 2, "deep cut")
+finisher = Attack([], [], 25, 0, 2, "finisher")
+heavyBlow = Attack([], [], 100, 0, 5, "heavy blow")
+quickAttack = Attack([], [], 35, 0, 2, "quick attack")
+heaviestBlow = Attack([], [], 125, 0, 6, "heaviest blow")
 
 #Globalizing variables
 
@@ -1620,7 +1642,10 @@ gold coin yet or not?'")
 (pick a number): ")
         while fightAvoid != "1" and fightAvoid != "2":
             fightAvoid = input("That won't work this time! PICK A NUMBER: ")
-        if fightAvoid == "1": 
+        if player.weapon.name == "Ogre in a Bottle":
+            print("The ogre then ignores what you say and calls you back saying incoherently that you smell suspicious, and you're forced to fight them.")
+            fightSequence([deepcopy(ogre)], location, [[]])
+        elif fightAvoid == "1": 
             print("The ogre seems to like that option, and lets you go as he \n\
 meanders back to the tavern. You regain your composure and continue walking \n\
 to the village exit.")
