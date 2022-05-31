@@ -244,6 +244,12 @@ class Enemy:
 
         return orinalInflictionAttackers, damageFromSources, respectiveNames
 
+    def IsStunned(self):
+        for infliction in self.inflictions:
+            if infliction.effect.effect == InflictionType.STUN:
+                return True
+        return False
+
 
 
 class Weapon:
@@ -331,7 +337,7 @@ class Player:
                 for infliction in hit.inflictions:
                     print("This attack inflicts " + infliction.Name() + " for " + str(infliction.durationLeft) + " turns.")
             else:
-                print("Max's " + self.name + " misses.")
+                print("Max's " + self.weapon.name + " misses.")
             
             self.weapon.attacks[self.weapon.activeAttack].timeSinceStart = 0
 
@@ -353,7 +359,10 @@ class Player:
             if infliction.effect.effect != InflictionType.STUN or not dodged:
                 self.inflictions.append(infliction)
             else:
-                print("Because you blocked you didn't get stunned.")
+                halfTimeInfliction = infliction
+                halfTimeInfliction.durationLeft = int(floor(float(halfTimeInfliction.durationLeft) / 2))
+                self.inflictions.append(halfTimeInfliction)
+                print("Because you blocked get stunned for half as long. Which is in this case " + str(halfTimeInfliction.durationLeft))
         self.inflictionAttackers.extend([hit.attacker] * len(hit.inflictions))
 
     def UpdateInflictions(self):
@@ -433,7 +442,7 @@ They're quick weapons that do damage over time, and accumulate their damage inst
         print("A steel longsword.\n\
 It does high damage, but does all of it's damage upfront and as such does less damage on tankier foes, but is good at small foes.")
     elif weaponChoice == "ogre in a bottle":
-        player.weapon = Weapon([clubBash, punch], "Ogre in a Bottle", 0.0)
+        player.weapon = Weapon([clubBash, punch], "Ogre in a Bottle", 0.5)
         weaponStrength = 1000
         print("BONK")
 
@@ -678,15 +687,18 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                 unblockedDamage = 0
                 blockedDamage = 0
                 for i in range(len(enemiesC)):
-                    enemyHit = enemiesC[i].TakeTurn(i)
-                    unblockedDamage += enemyHit.damage
-                    damageDelt = floor(enemyHit.damage / 2)
-                    blockedDamage += damageDelt
-                    heal = int(floor(float(damageDelt) * enemiesC[i].leech))
-                    if heal != 0:
-                        print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                        enemiesC[i].health += heal
-                    player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i), True)
+                    if not enemiesC[i].IsStunned():
+                        enemyHit = enemiesC[i].TakeTurn(i)
+                        unblockedDamage += enemyHit.damage
+                        damageDelt = floor(enemyHit.damage / 2)
+                        blockedDamage += damageDelt
+                        heal = int(floor(float(damageDelt) * enemiesC[i].leech))
+                        if heal != 0:
+                            print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
+                            enemiesC[i].health += heal
+                        player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i), True)
+                    else:
+                        print(enemiesC[i].name + " did not attack this round as they were stunned.")
                     print("")
 
                 print("You dodged the attack and took " + str(blockedDamage) + " damage instead of taking " + str(unblockedDamage) + " damage!")
@@ -694,12 +706,15 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
 
             else:
                 for i in range(len(enemiesC)):
-                    enemyHit = enemiesC[i].TakeTurn(i)
-                    player.ApplyHit(enemyHit, False)
-                    heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
-                    if heal != 0:
-                        print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                        enemiesC[i].health += heal
+                    if not enemiesC[i].IsStunned():
+                        enemyHit = enemiesC[i].TakeTurn(i)
+                        player.ApplyHit(enemyHit, False)
+                        heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
+                        if heal != 0:
+                            print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
+                            enemiesC[i].health += heal
+                    else:
+                        print(enemiesC[i].name + " did not attack this round as they were stunned.")
                     print("")
                 print("Becuase you were stunned you didn't block.\n")
 
@@ -723,21 +738,16 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
         elif prompt == "attack":
             print("")
             for i in range(len(enemiesC)):
-                enemyHit = enemiesC[i].TakeTurn(i)
-                player.ApplyHit(enemyHit, False)
-                heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
-                if heal != 0:
-                    print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                    enemiesC[i].health += heal
+                if not enemiesC[i].IsStunned():
+                    enemyHit = enemiesC[i].TakeTurn(i)
+                    player.ApplyHit(enemyHit, False)
+                    heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
+                    if heal != 0:
+                        print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
+                        enemiesC[i].health += heal
+                else:
+                    print(enemiesC[i].name + " did not attack this round as they were stunned.")
                 print("")
-
-            if not player.IsStunned():
-                playerHit = player.TakeTurn()
-                enemiesC[target].ApplyHit(playerHit)
-                player.currentHealth += int(floor(float(playerHit.damage) * player.weapon.leech))
-                print("")
-            else:
-                print("Becuase you were stunned you didn't attack.\n")
 
             for i in range(len(enemiesC)):
                 ignored, inflictionDamageDelt, respectiveNames = enemiesC[i].UpdateInflictions()
@@ -747,6 +757,14 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                         print("You heal off of " + enemiesC[i].name + " for " + str(heal) + " because of " + respectiveNames[j] + ".")
                         player.currentHealth = min(player.maxHealth, player.currentHealth + heal)
                 print("")
+
+            if not player.IsStunned():
+                playerHit = player.TakeTurn()
+                enemiesC[target].ApplyHit(playerHit)
+                player.currentHealth += int(floor(float(playerHit.damage) * player.weapon.leech))
+                print("")
+            else:
+                print("Becuase you were stunned you didn't attack.\n")
 
             damageDealer, inflictionDamageDelt, respectiveNames = player.UpdateInflictions()
             for i in range(len(damageDealer)):
@@ -774,10 +792,19 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
 
             
 
+        fightOn = player.currentHealth > 0 and len(enemiesC) > 0
+        if not fightOn:
+            break
+
         enemiesRemovedThisFrame = 0
         for i in range(len(enemiesC)):
             if enemiesC[i - enemiesRemovedThisFrame].health <= 0:
                 print(enemiesC[i - enemiesRemovedThisFrame].name + " has been defeated.")
+
+                if len(enemiesC) <= 1:
+                    print("You won!")
+                    fightOn = False
+                    break
 
                 inflictionsRemovedThisFrame = 0
                 for j in range(len(player.inflictionAttackers)):
@@ -791,10 +818,6 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                 del(enemiesC[i - enemiesRemovedThisFrame])
                 enemiesRemovedThisFrame += 1
                 target = 0
-
-        fightOn = player.currentHealth > 0 and len(enemiesC) > 0
-        if not fightOn:
-            break
 
         enemyNames = [enemiesC[0].name]
         combinedEnemyNames = enemiesC[0].name
@@ -1205,7 +1228,7 @@ def pigLanguage():
 
 
 def riverEscape():
-    stepsYes = random.randint(21,30)
+    stepsYes = random.randint(10, 15)
     print("You reach a river that could separate you from the ferocious carnivores, if you can reach the other side \n\
 of course. Fortunately, an old fisherman is seen walking towards his flimsy boat, and you take this opportunity to ask the man \n\
 for safe passage across the swift rapids. The only issue is, the man is not picking up the social cues that indicate your panic, so \n\
@@ -1374,6 +1397,10 @@ the enemy's fate, not you'. You take this as a good sign, and place the sword at
 uneventful, and you wake up feeling strangely refreshed after having that small victory the previous night!")
     pythonrandWepstrength = random.randint(0,100)
     weaponStrength = pythonrandWepstrength
+    if player.weapon.name == "Pet Slime":
+        player.weapon.LearnAttack(python1HeaviestBlow)
+    else:
+        player.weapon = Weapon([python1HeaviestBlow, sword1QuickAttack], "Python", 0.5)
     return weaponStrength
 
 
@@ -1502,8 +1529,8 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 #StatusEffect(InflictionType.YOURINFLICTION, how long you want it to last)
 #The syntax for an attacks is:
 #Attack([Status effects], [chance of each status effect happening], damage, damage randomness (how far from the original value the actual value can be), turns to do, name)
-clubBash = Attack([StatusEffect(InflictionType.STUN, 1)], [100], 25, 10, 3, "club bash")
-punch = Attack([], [], 5, 5, 1, "punch")
+clubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [100], 25, 10, 3, "club bash")
+punch = Attack([], [], 15, 15, 1, "punch")
 quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, 1, "quick stab")
 rockThrow = Attack([StatusEffect(InflictionType.STUN, 1)], [25], 5, 5, 1, "rock throw")
 slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, 1, "slime hug")
@@ -1519,6 +1546,8 @@ axe1Finisher = Attack([], [], 25, 0, 2, "finisher")
 #Sword1
 sword1HeavyBlow = Attack([], [], 100, 0, 5, "heavy blow")
 sword1QuickAttack = Attack([], [], 35, 0, 2, "quick attack")
+#Python1
+python1HeaviestBlow = Attack([], [], 125, 0, 6, "heaviest blow")
 
 #Globalizing variables
 
@@ -1770,7 +1799,6 @@ you disrespect my bridge, and then you don't even give me something for my dehyd
             print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
             fightSequence([deepcopy(ogre), deepcopy(ogre)], location, [[]])
-            fightSequenceOld(troll, location)
             if restart:
                 return
             allIn = True
@@ -1783,7 +1811,6 @@ This won't do! I'm going to have to teach you a lesson in manners!")
         print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
         fightSequence([deepcopy(ogre), deepcopy(ogre)], location, [[]])
-        fightSequenceOld(troll, location)
         if restart:
             return
         allIn = True
