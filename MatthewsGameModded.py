@@ -88,7 +88,7 @@ class Infliction:
         elif self.effect == InflictionType.STUN:
             return 0
         elif self.effect == InflictionType.WET:
-            return 5
+            return 15
         else:
             return 0
 
@@ -133,7 +133,6 @@ class StatusEffect:
     def Name(self):
         return self.effect.FindName()
             
-
 
 
 class Hit:
@@ -439,6 +438,14 @@ class Player:
                 return True
         return False
 
+
+
+class Settings:
+    sleepTime : int
+
+    def __init__(self, sleepTime : int):
+        self.sleepTime = sleepTime
+
         
 
 
@@ -459,6 +466,28 @@ class Player:
 
 
 
+
+def FindSettings():
+    global currentSettings
+    prompt = input("How many seconds do you want to wait after key events('default' = 1) ")
+    goodInput = prompt.isnumeric()
+    if goodInput:
+        goodInput = int(prompt) >= 0
+    goodInput |= prompt == "default"
+    while not goodInput:
+        prompt = input("It has to be a number or 'default'. How many seconds do you want to wait after key events('default' = 1) ")
+        goodInput = prompt.isnumeric()
+        if goodInput:
+            goodInput = int(prompt) >= 0
+        goodInput |= prompt == "default"
+    if prompt == "default":
+        currentSettings = Settings(1)
+    else:
+        currentSettings = Settings(int(prompt))
+
+
+
+
 def weaponSelect(): 
     global player, weaponChoice, weaponStrength
 
@@ -473,12 +502,13 @@ It's a slow weapon that stays inside of enemies and damages them over time.")
         player.weapon = Weapon([deepCut, finisher], "Axe", 0.0)
         weaponStrength = 8
         print("A pair of small battle axes.\n\
-They're quick weapons that do damage over time, and accumulate their damage instead of giving it to you upfront, good at single target.") 
+They're quick weapons that do damage over time, and accumulate their\
+     damage instead of giving it to you upfront, good at single target and very small, but bad against leech.") 
     elif weaponChoice == "sword":
         player.weapon = Weapon([heavyBlow, quickAttack], "Sword", 0.0)
         weaponStrength = 10 
         print("A steel longsword.\n\
-It does high damage, but does all of it's damage upfront and as such does less damage on tankier foes, but is good at small foes.")
+It does high damage, but does all of it's damage upfront but does enough damage to one shot most foes, good at big foes, but bad at small ones.")
     elif weaponChoice == "ogre in a bottle":
         player.weapon = Weapon([clubBash, punch], "Ogre in a Bottle", 0.5)
         weaponStrength = 1000
@@ -619,7 +649,7 @@ but the guard rejects your cries for peace and hits you, making you lose ",playe
             else:
                 print("You risk getting hit to try and desperately plead with the only human you've had to fight so far, \n\
 and the guard hesitantly stops his attack to let you plead your case.")
-                #time.sleep(5)
+                time.sleep(currentSettings.sleepTime)
                 return morality
         elif prompt == "all in": 
             damage = random.randint(0,1) 
@@ -684,11 +714,14 @@ def fightSequenceOld(enemy, location):
 
 
 
-def fightSequence(enemies : Enemy, location, specialEnding : str):
+def fightSequence(enemies : Enemy, location : str, specialEnding : str):
     global player, specialFightEnding
 
     specialFightEnding = False
-    enemiesC = deepcopy(enemies) # The C in enemiesC stands for copy.       
+    enemiesC = deepcopy(enemies) # The C in enemiesC stands for copy.
+    cToOriginal = []
+    for i in range(len(enemiesC)):
+        cToOriginal.append(i)
     fightOn = True
     fightFrameOne = True
     target = 0
@@ -733,7 +766,7 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                         heal = int(floor(float(damageDelt) * enemiesC[i].leech))
                         if heal != 0:
                             print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                            enemiesC[i].health += heal
+                            enemiesC[i].health = min(enemies[cToOriginal[i]].health * 2, enemiesC[i].health + heal)
                         player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i), True)
                         print("You dodged the attack and took " + str(blockedDamage) + " damage instead of taking " + str(unblockedDamage) + " damage!")
                     else:
@@ -747,7 +780,7 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                         heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                         if heal != 0:
                             print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                            enemiesC[i].health += heal
+                            enemiesC[damageDealer[i]].health = min(enemies[cToOriginal[damageDealer[i]]].health * 2, enemiesC[damageDealer[i]].health + heal)
                         print("Becuase you were stunned you didn't block.\n")
                     else:
                         print(enemiesC[i].name + " did not attack this round as they were stunned.")
@@ -767,7 +800,7 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                 heal = int(floor(float(inflictionDamageDelt[i]) * enemiesC[damageDealer[i]].leech))
                 if heal != 0:
                     print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of " + respectiveNames[i] + ".")
-                    enemiesC[damageDealer[i]].health += heal
+                    enemiesC[damageDealer[i]].health = min(enemies[cToOriginal[damageDealer[i]]].health * 2, enemiesC[damageDealer[i]].health + heal)
 
 
         elif prompt == "attack":
@@ -779,7 +812,7 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                     heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                     if heal != 0:
                         print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                        enemiesC[i].health += heal
+                        enemiesC[i].health = min(enemies[cToOriginal[i]].health * 2, enemiesC[i].health + heal)
                 else:
                     print(enemiesC[i].name + " did not attack this round as they were stunned.")
                 print("")
@@ -851,6 +884,7 @@ def fightSequence(enemies : Enemy, location, specialEnding : str):
                         del(player.inflictions[j - inflictionsRemovedThisFrame])
                         inflictionsRemovedThisFrame += 1
                 del(enemiesC[i - enemiesRemovedThisFrame])
+                del(cToOriginal[i - enemiesRemovedThisFrame])
                 enemiesRemovedThisFrame += 1
                 target = 0
 
@@ -902,7 +936,7 @@ body is still at room temperature, you shake your head in disagreement, and get 
     rArm = 50
     lArm = 50
     finalBlow = 100
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     while rLeg > 0 and player.currentHealth > 0:
         print("Joshro's right leg's health: ", rLeg) 
         print("Max's health:", player.currentHealth)
@@ -985,7 +1019,7 @@ body is still at room temperature, you shake your head in disagreement, and get 
             return
     print("You've weakened Joshro severely, but the fight isn't over yet! You need to attack him directly and land the final blow \n\
 so that Joshro's reign of terror can end once and for all...")
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     while finalBlow > 0 and player.currentHealth > 0:
         print("Joshro's health: ", finalBlow) 
         print("Max's health: ", player.currentHealth)
@@ -1029,7 +1063,7 @@ body is still at room temperature, you shake your head in disagreement, and get 
     bruceHelp = 5
     leaveMessage = False
     bruceDamage = random.randint(1,10)
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     while rLeg > 0 and player.currentHealth > 0:
         print("Joshro's right leg's health: ", rLeg) 
         print("Max's health: ", player.currentHealth)
@@ -1168,7 +1202,7 @@ body is still at room temperature, you shake your head in disagreement, and get 
             return
     print("You've weakened Joshro severely, but the fight isn't over yet! You need to attack him directly and land the final blow \n\
 so that Joshro's reign of terror can end once and for all...")
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     while finalBlow > 0 and player.currentHealth > 0:
         print("Joshro's health: ", finalBlow) 
         print("Max's health: ", player.currentHealth)
@@ -1302,20 +1336,20 @@ an old 'stable', or a strangely shaped 'tree'. Where do you look? ")
             print("You enter the dusty and decrepit stable, where you make a mental note of how rotten the wooden interior looks from the several \n\
 years of neglect. Fortunately, a piece of wood that isn't entirely ruined juts out of the wall, and you decide that this will suffice as \n\
 a lever. You grab the STICK, and exit the stable.")
-            #time.sleep(5)
+            time.sleep(currentSettings.sleepTime)
             stick = True
             stable = True
         elif whereTolook == "shed":
             print("You enter the small shed, and laugh to yourself as you observe just how little gardening tools and other trinkets typically \n\
 found in a shed are actually present. One thing that isn't present, however, is the placeholder, or even something that could pass for one. \n\
 Saddened by this, you leave the shed.")
-            #time.sleep(5)
+            time.sleep(currentSettings.sleepTime)
             shed = True
         elif whereTolook == "tree":
             print("After having a previous encounter when it comes to sticking your hand inside trees, you hesitate before blindly \n\
 shoving your hand inside the dark crevice, and your hand connects with something cold- the PLACEHOLDER! You don't test your luck any further \n\
 and exit the hole, PLACEHOLDER in hand.")
-            #time.sleep(5)
+            time.sleep(currentSettings.sleepTime)
             placeholder = True
             tree = True
     print("Using your knowledge as the village carpenter, you combine these two objects into a functional lever, and place it in the appropriate location \n\
@@ -1549,6 +1583,12 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 
 
 
+
+
+
+
+
+
 #Variables and game:
 
 #Constant variables:
@@ -1559,36 +1599,37 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 #Attack([Status effects], [chance of each status effect happening], damage, damage randomness (how far from the original value the actual value can be), turns to do, name)
 clubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [100], 25, 10, 3, "club bash")
 punch = Attack([], [], 15, 15, 1, "punch")
+heavyPunch = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 25, 25, 2, "heavy punch")
 quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, 1, "quick stab")
 rockThrow = Attack([StatusEffect(InflictionType.STUN, 1)], [25], 5, 5, 1, "rock throw")
 slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, 1, "slime hug")
 slimeSpike = Attack([StatusEffect(InflictionType.BLEED, 3)], [100], 5, 0, 1, "slime spike")
 arrowShoot = Attack([StatusEffect(InflictionType.BURNING, 4)], [100], 35, 10, 3, "shoot arrow")
 arrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, 1, "arrow stab")
-deepCut = Attack([StatusEffect(InflictionType.BLEED, 15)], [100], 3, 2, 2, "deep cut")
-finisher = Attack([], [], 25, 0, 2, "finisher")
+deepCut = Attack([StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15)], [100, 50, 25], 0, 0, 1, "deep cut")
+finisher = Attack([], [], 35, 0, 2, "finisher")
 heavyBlow = Attack([], [], 100, 0, 5, "heavy blow")
-quickAttack = Attack([], [], 35, 0, 2, "quick attack")
+quickAttack = Attack([], [], 35, 0, 2, "quick attack") # Just finisher with a different name.
 heaviestBlow = Attack([], [], 125, 0, 6, "heaviest blow")
+splash = Attack([StatusEffect(InflictionType.WET, 5)], [100], 3, 3, 1, "splash")
+quickClubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 10, 10, 2, "quick club bash")
 
 #Globalizing variables
 
-global location, ogre, ogreOld, goblin, goblinOld, troll, mutant, rat, player, allIn, currentWeapon, \
-weaponChoice, restart, weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr
+global location, ogre, goblin, troll, mutant, rat, player, allIn, weaponChoice, restart, \
+weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
+currentSettings : Settings
 restart = True
 
 def main():
-    global location, ogre, ogreOld, goblin, goblinOld, troll, mutant, rat, player, allIn, currentWeapon, \
-    weaponChoice, restart, weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr
-    print(str([0] * 8))
+    global location, ogre, goblin, troll, mutant, rat, player, allIn, weaponChoice, restart, \
+    weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
     restart = False
     ogre = Enemy(100, [clubBash, punch], "Ogre", 0.0)
-    ogreOld = random.randint(85,115)
     goblin = Enemy(100, [quickStab, rockThrow], "Goblin", 0.0)
-    slime = Enemy(25, [slimeHug], "Pet Slime", 1.0)
-    goblinOld = random.randint(60,90)
-    troll = random.randint(100,125)
-    mutant = 120
+    slime = Enemy(25, [slimeHug], "Pet Slime", 0.5)
+    troll = Enemy(125, [quickClubBash, splash], "troll", 0.0)
+    mutant = Enemy(300, [punch, heavyPunch], "mutant", 0.25)
     rat = random.randint(90,110)
     allIn = False
     player = Player(150)
@@ -1611,20 +1652,17 @@ def main():
 beautiful princess Misty from the evil dragon Joshro. Your story begins at the village \n\
 blacksmith, where you must decide what kind of weapon you will bring with you \n\
 on your journey.")
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     weaponChoice = input("Do you take a 'bow', 'axe', or 'sword'?: ")
     while weaponChoice != "bow" and weaponChoice != "axe" and weaponChoice != "sword" and weaponChoice != "ogre in a bottle":
         weaponChoice = input("That weapon isn't here! Do you take a 'bow', 'axe', or 'sword'?: ")
     weaponSelect()
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
     location = "village"
-    if location == "village": 
-        print(introMessages[0]) 
-    elif location == "forest": 
-        print(introMessages[1]) 
+    print(introMessages[0])
     fightRun = input("Do you want to 'fight' or 'run' away from the ogre? ")
     while fightRun != "fight" and fightRun != "run":
         fightRun = input("That won't work this time! Do you want to 'fight' or 'run' away from the ogre? ") 
@@ -1658,14 +1696,14 @@ on your feet and pull out your weapon.")
             if restart:
                 return
             allIn = True
-    #time.sleep(5)        
+    time.sleep(currentSettings.sleepTime)        
     print(" ")
     print("++++++++++++++++")
     print(" ")
     deadlyTreasure()
     if restart:
         return
-    #time.sleep(5)    
+    time.sleep(currentSettings.sleepTime)    
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1733,33 +1771,21 @@ After doing this, your Slime Pet learns a new skill, club bash.")
 at the medieval gym, you fail and fall face first into some *very* sharp thorns")
             end()
             return
-    #time.sleep(5)                
+    time.sleep(currentSettings.sleepTime)                
     print(" ")
     print("++++++++++++++++")
     print(" ")
     location = "river"
-    if location == "village": 
-        print(introMessages[0]) 
-    elif location == "forest": 
-        print(introMessages[1]) 
-    elif location == "river": 
-        print(introMessages[2])
+    print(introMessages[2])
     riverEscape()
     if restart:
         return
-    #time.sleep(5)    
+    time.sleep(currentSettings.sleepTime)    
     print(" ")
     print("++++++++++++++++")
     print(" ")
     location = "cave/watchtower"
-    if location == "village": 
-        print(introMessages[0]) 
-    elif location == "forest": 
-        print(introMessages[1]) 
-    elif location == "river": 
-        print(introMessages[2])
-    elif location == "cave/watchtower":
-        print(introMessages[3])
+    print(introMessages[3])
     caveWatchtower = input("Do you take shelter in the 'cave' or the 'watchtower'? ")
     while caveWatchtower != "cave" and caveWatchtower != "watchtower":
         caveWatchtower = input("That won't work this time! Do you take shelter in the 'cave' or the 'watchtower'? ")
@@ -1771,27 +1797,18 @@ at the medieval gym, you fail and fall face first into some *very* sharp thorns"
         print("You leave the cave, and trek on towards the increasingly visible castle.")
     elif caveWatchtower == "watchtower":
         print("You exit the watchtower, and trek on towards the increasingly visible castle.")
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
     #Troll encounter/fight!!
     location = "old bridge"
-    if location == "village": 
-        print(introMessages[0]) 
-    elif location == "forest": 
-        print(introMessages[1]) 
-    elif location == "river": 
-        print(introMessages[2])
-    elif location == "cave/watchtower":
-        print(introMessages[3])
-    else:
-        print(introMessages[4])
+    print(introMessages[4])
     print("'I'm tired of you rude humans criticizing my bridge upkeep skills!:( Gah! All this yelling has got me thirsty, \n\
 would you happen to have anything that could satiate my thirst?")
     if potionTroll == True:
         print("You suddenly remember that you have that potion from the cave, as well as the oddly specific dream that turned out \n\
-to manifest itself into reality... Anyway, you decide if you should give the troll the potion or keep it for yourself.")
+to manifest itself into reality... Anyway, you think about if you should give the troll the potion or keep it for yourself.")
         bargainFight = input("Do you 'give' the troll the potion or 'keep' it for yourself? ")
         while bargainFight != "give" and bargainFight != "keep":
             bargainFight = input("That won't work this time! Do you 'give' the troll the potion or 'keep' it for yourself? ")
@@ -1801,7 +1818,7 @@ face with a satisfied grin on her face. 'WOW! I don't know what kind of stuff wa
 DON'T GO ANYWHERE HUMAN, OR ELS-', is all the troll can say before the potion's effects fully take place, and she falls onto the bridge and starts snoring loudly.")
             emptyStr, strings = stringWord(emptyStr)
             stayGo = input("Maybe it's because you felt bad for disrespecting the troll's bridge, or more likely because you're crazy, but you \n\
-you hesitate before going and wonder whether or not you should 'stay' and see what the troll wants from you, or 'go' because the princess stuck in an \n\
+you hesitate before going and wonder whether or not you should 'stay' and see what the troll wants from you, or 'go' because the princess stuck in an \
 evil dragon's castle is still there and, well, that was the whole reason you're out here in the first place... What do you do? ")
             while stayGo != "stay" and stayGo != "go":
                 stayGo = input("That won't work this time! Do you 'stay' or 'go'? ")
@@ -1823,7 +1840,7 @@ quietly to continue your journey.")
 you disrespect my bridge, and then you don't even give me something for my dehydration! This won't do! I'm going to have to teach you a lesson in manners!")
             print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
-            fightSequence([deepcopy(ogre), deepcopy(ogre)], location, [[]])
+            fightSequence([deepcopy(troll)], location, [[]])
             if restart:
                 return
             allIn = True
@@ -1835,29 +1852,21 @@ you blank out, and the troll notices this. 'WOW! So first you disrespect my brid
 This won't do! I'm going to have to teach you a lesson in manners!")
         print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
-        fightSequence([deepcopy(ogre), deepcopy(ogre)], location, [[]])
+        fightSequence([deepcopy(troll)], location, [[]])
         if restart:
             return
         allIn = True
-    #time.sleep(5)
+    player.weapon.LearnAttack(splash)
+    print("Before leaving, you let your " + player.weapon.name + " soak in the water, and it seems to absorb it.\n\
+Your " + player.weapon.name + " has learned 'splash'")
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
     location = "castle entrance"
-    if location == "village": 
-        print(introMessages[0]) 
-    elif location == "forest": 
-        print(introMessages[1]) 
-    elif location == "river": 
-        print(introMessages[2])
-    elif location == "cave/watchtower":
-        print(introMessages[3])
-    elif location == "old bridge":
-        print(introMessages[4])
-    else:
-        print(introMessages[5])
+    print(introMessages[5])
     castleEntrance()
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1868,7 +1877,7 @@ Luckily, you find a map taped to a community board that gives the location of 3 
 an inn, a two-person cottage in need of one more roommate, and a tavern with rooms to rent. Fortunately, your pickpocketing skills have empowered \n\
 you with the ability to easily pay for all three.")
     x = home()   
-    print("You choose to make the",x,"your new home.")
+    print("You choose to make the", x ,"your new home.")
     if x == "cottage":
         print("Knocking on the door of the cottage, you take a minute to observe that everyone has been avoiding you with intense dedication, \n\
 which deeply concerns you. The door then opens, and for the first time since you step foot in this strange place, a friendly face seems eager to see you. \n\
@@ -1897,7 +1906,7 @@ In one of the drawers, you find a damaged note that warns its readers to be wear
     
     player.currentHealth = player.maxHealth
 
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -1905,7 +1914,7 @@ In one of the drawers, you find a damaged note that warns its readers to be wear
 exclaiming:'LeAvE, RiGhT nOw.' Obviously, you don't move, and the mutant spits on the ground before raising his axe to finish the job, but you quickly \n\
 dodge the attack and ready your weapon in retaliation.")
     location = "random street"
-    fightSequenceOld(mutant, location)
+    fightSequence([deepcopy(mutant)], location, [[]])
     if restart:
         return
     spareKill = input("The mutant crashes to the ground, pleading with you to spare it. Do you 'spare' or 'kill' the mutant? ")
@@ -1922,30 +1931,17 @@ but this definitely takes the cake. You dust yourself off, and resume walking ar
         allIn = True
     if restart:
         return
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
     codeFind()
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
     location = "sewers"
-    if location == "village": 
-        print(introMessages[0]) 
-    elif location == "forest": 
-        print(introMessages[1]) 
-    elif location == "river": 
-        print(introMessages[2])
-    elif location == "cave/watchtower":
-        print(introMessages[3])
-    elif location == "old bridge":
-        print(introMessages[4])
-    elif location == "castle entrance":
-        print(introMessages[5])
-    else:
-        print(introMessages[6])
+    print(introMessages[6])
     print("Before beginning your attack on the rat, you remember that you used to take \n\
 medieval track and field at your former academy, and ponder over whether or not you should see if your skills are still in tip-top shape. \n\
 The little voice in your head warns you, though, that if your health has not been increased \n\
@@ -1993,7 +1989,7 @@ However, it doesn't fully defeat you when it catches up with you, and as such yo
                 print("In a surprising turn of events, you manage to wade quickly enough away from the rat that it decides that you're not worth the trouble, \n\
 and waddles away in the other direction. In the process though your knee got cut by a rock.")
                 player.currentHealth -= 25
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -2005,7 +2001,7 @@ intricately designed mathematical padlock that protects a metal box. You read a 
     randomNumtosolve(random.choice(divByfour))
     print("You complete the puzzle, and unlock the box to find the key you need. You exit the main watchtower without arousing suspicion from the nearby mutants, \n\
 and continue on your way to the armory.")
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -2035,7 +2031,7 @@ You nod in agreement, and enter the keep, where the evil Joshro and precious Mis
 He also makes you promise to give him a substantial amount of the riches located inside the keep as compensation for his support. You nod in agreement, and enter the keep, where the evil Joshro and precious Misty are located... ")
             guardHelpNot = True
         emptyStr, strings = stringWord(emptyStr)
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -2044,7 +2040,7 @@ To enter the next room you first need to speak to the receptionist, who happens 
 but because pig latin is not really in fashion anymore, you struggle to decipher what he's saying, and must employ the use of writing to help \n\
 you conversate better.")
     pigLanguage()
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -2099,7 +2095,7 @@ You drink it, and bask in the glory that is being a nonviolent person before hea
     elif len(emptyStr) < 6:
         print("You weren't a pacifist! The sorcerer sighs, but because you're mad at the sorcerer for not giving you a chance, you try to attack him. The sorcerer teleports away just in time, and you hit the wall \n\
 with your sword in anger. After hitting the wall a couple more times just for good measure, you head to the door separating you from Misty and Joshro...")
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -2115,7 +2111,7 @@ with your sword in anger. After hitting the wall a couple more times just for go
             return
         trackEndings.append("Do you want to stick with Misty?")
         endingFour = True
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -2139,7 +2135,7 @@ with your sword in anger. After hitting the wall a couple more times just for go
                 print(" ")
                 print(endingFourHappens)
                 endingChosen = True
-    #time.sleep(5)
+    time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
@@ -2151,60 +2147,81 @@ with your sword in anger. After hitting the wall a couple more times just for go
         print("This game took me a little bit under 2 months to make, and it was definitely a rollercoaster \n\
 of hating programming and loving it, but I'd just like to say a couple quick things about some of the people who helped/supported me through \n\
 the development process... ") 
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print(" ")
         print("The first person I'd like to thank is God for allowing me to be here and have the experience to be able to make such a cool game, as well as allowing me to meet wonderful people \n\
 like Jasun, Jordan, Corbin, and other people I'd consider friends:)")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print(" ")
         print("The next person is, of course, Jasun, for two very good reasons. First and foremost, without Jasun pushing me to constantly upgrade and continue learning Python as well as \n\
 making the game itself, this game would've never been completed. Him helping me get through tricky lines of code is the second reason, as many of the things you experience throughout the game, \n\
 such as the pig latin challenge and the normal fight scenes, wouldn't have functioned properly or at all without his advice. All in all, I'd like to thank Jasun for allowing me to do a project that I \n\
 genuinely enjoyed working on (for most of the time at least), as well as helping me explore programming in general, as it is something I definitely want to pursue as a future career.")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print(" ")
         print("For the next person, I'm actually going to thank two people- those two people being Jordan and Corbin. When Jasun was busy helping other people out or was stumped about something \n\
 concerning my code, Jordan and Corbin, without hesitation, always came to my aid to help me solve whatever issue was plagueing my code. Without them and their \n\
 Albert Einstein-like brains, a substantial portion of this game would not be possible:)")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print(" ")
         print("Ok because there are a bunch of other people on my list that deserve paragraphs of their own, but also because I don't want this game to be like a million lines of code, I'm going to sum up the other people very quickly:")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print("MICHELLE, for being supportive of my interest in coding even through tough times:)")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print("~~~~~~~~~~~~~~~~")
         print("LUKE, for showing a genuine interest in seeing my game be completed and even asking questions regarding the nerdy mechanics of what certain stuff did inside the code:)")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print("~~~~~~~~~~~~~~~~")
         print("VICTORY, for being the person I could have a good laugh with when programming annoyed me and I needed a break:)")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print("~~~~~~~~~~~~~~~~")
         print("DANNY, for being interested in playing my game once it was finished, as well as making ultimate frisbee be super fun and rewarding after doing a bunch of typing the Wednesday before in STEAM Club:)")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print("~~~~~~~~~~~~~~~~")
         print("DOUG, CAITLIN, BENNY, and JEFF, for letting me leave their classes early so I could work on my game:)")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print("~~~~~~~~~~~~~~~~")
         print("MORGAN, ELIZABETH, LUKAS, and GENEVIEVE, for being pretty cool people and keeping my mental state at a good place while \n\
 personal issues were taking place that could've definitely sunk my drive to finish making the game, \n\
 as well as showing interest in wanting to play my game once it was finished:)")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print("~~~~~~~~~~~~~~~~")
         print("JASUN, LUKE, CHARLOTTE, NOX, JORDAN, CORBIN, MORGAN, SHEPARD, BENNY, LUKAS, and many others for playtesting the game!:)")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print("~~~~~~~~~~~~~~~~")
         print("And lastly, YOU, the player, whoever you are, for beating my broken but meaningful mess of a game!:)")
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print(" ")
         print("++++++++++++++++")
         print(" ")
         print("If you're curious about what the '(NUMBER out of 4)' means next to the name of the ending you got, try playing the game again and find out what would happen if you did things differently!:)")
     else:
-        #time.sleep(5)
+        time.sleep(currentSettings.sleepTime)
         print(" ")
         print("++++++++++++++++")
         print(" ")
         print("Thanks for playing my game! If you're curious about what the '(NUMBER out of 4)' means next to the name of the ending you got, try playing the game again and find out what would happen if you did things differently!:)")
     time.sleep(60)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+FindSettings()    
 while restart:
     main()
