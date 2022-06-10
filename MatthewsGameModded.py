@@ -1427,31 +1427,22 @@ safe passage across a path, but brush it off as your mind playing tricks on you 
 
 
 def swordPull():
-    grunt = ["guh", "gurr", "rawr"]
+    grunt = ["gurr", "rawr", "guh", "rawr", "gurr"]
     correct = True
     exercise = True
-    gruntCount = 0
     while exercise:
-        for j in range(2):
-            userGrunt = []
-            gruntCount += 1
-            if correct == False:
-                break       
-            if gruntCount == 6:
-                exercise = False
+        userGrunt = []
+        for i in range(5):
+            muscle = input("Exert your strength: ")
+            userGrunt.append(muscle)
+            print(userGrunt)
+            if userGrunt[i] != grunt[i]:
+                userGrunt = []
+                print("You strain your back and have to start over!")
+                gruntCount = 0
                 break
-            for i in range(3):
-                muscle = input("Exert your strength: ")
-                userGrunt.append(muscle)
-                print(userGrunt)
-                if userGrunt[i] == grunt[i]:
-                    pass
-                else:
-                    userGrunt = []
-                    print("You strain your back and have to start over!")
-                    gruntCount = 0
-                    break
-            print("The sword wiggles slightly out of place, and you continue trying.")
+            elif i == 4:
+                exercise = False
     print("Huzzah! The sword finally nudges out of its nested position, and you bask in its strangely magical glory. 'The Python' is \n\
 engraved on the side of the blade, and you deduce that this is the name of the sword.")
     print("Attached to the handle of the blade is a leaflet that reveals why 'The Python' feels so powerful: 'The blade decides \n\
@@ -1911,8 +1902,7 @@ In one of the drawers, you find a damaged note that warns its readers to be wear
     print("++++++++++++++++")
     print(" ")
     print("After leaving the", x, "in the morning, you turn the corner, but come face to face with a hideously disfigured mutant that shoves you to the ground before \n\
-exclaiming:'LeAvE, RiGhT nOw.' Obviously, you don't move, and the mutant spits on the ground before raising his axe to finish the job, but you quickly \n\
-dodge the attack and ready your weapon in retaliation.")
+exclaiming:'LeAvE, RiGhT nOw.' Obviously, you don't move, and the mutant spits on the ground before getting into a battle stance, and as such you do the same.")
     location = "random street"
     fightSequence([deepcopy(mutant)], location, [[]])
     if restart:
