@@ -848,7 +848,20 @@ def fightSequence(enemies : Enemy, location : str, specialEnding : str):
             combinedEnemyNames += ", " + enemiesC[i + 1].name
         for option in specialEnding:
             if option == enemyNames:
-                print("The " + combinedEnemyNames + " have chosen to stop fighting.")
+                if len(enemiesC) == 1:
+                    print("The " + enemiesC[0].name + " has chosen to stop fighting.")
+                else:
+                    printableCombinedEnemyNames = enemiesC[0].name
+                    if len(enemiesC) == 2:
+                        if enemiesC[0].name == enemiesC[1].name:
+                            printableCombinedEnemyNames += "s"
+                        else:
+                            printableCombinedEnemyNames += " and the " + enemiesC[1].name
+                    else:
+                        for i in range(len(enemiesC) - 2):
+                            printableCombinedEnemyNames += ", " + enemiesC[i + 1].name
+                        printableCombinedEnemyNames += ", and the" + enemiesC[i + 1].name
+                    print("The " + printableCombinedEnemyNames + " have chosen to stop fighting.")
                 fightOn = False
                 specialFightEnding = True
                 break
@@ -1550,9 +1563,10 @@ global location, ogre, goblin, troll, mutant, rat, player, allIn, weaponChoice, 
 weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
 currentSettings : Settings
 restart = True
+specialFightEnding = False
 
 def main():
-    global location, ogre, goblin, troll, mutant, rat, player, allIn, weaponChoice, restart, \
+    global location, ogre, goblin, troll, mutant, rat, player, allIn, weaponChoice, restart, specialFightEnding, \
     weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
     restart = False
     ogre = Enemy(100, [clubBash, punch], "Ogre", 0.0)
@@ -1684,13 +1698,13 @@ You're able to get up, but because of the surprise attack, you've lost valuable 
                     weaponStrength = int(weaponStrength * 2)
                     goblinFight = False
                     if (specialFightEnding):
-                        hadBONK = player.weapon.name == "Ogre in a Bottle"
+                        specialFightEnding = False
                         print("Oddly enough, you have now seemingly befriended the pet slime. The Pet Slime has replaced your weapon.")
-                        player.weapon = Weapon([slimeHug], "Pet Slime", 1.0)
-                        if hadBONK:
-                            print("After taking the place as your weapon, the Slime Pet decides that it should eat your old Ogre in a Bottle.\n\
-After doing this, your Slime Pet learns a new skill, club bash.")
-                            player.weapon.LearnAttack(clubBash)
+                        oldWeapon = player.weapon
+                        oldAttack = oldWeapon.attacks[0]
+                        player.weapon = Weapon([slimeHug, oldAttack], "Pet Slime", 1.0)
+                        print("After taking the place as your weapon, the Slime Pet decides that it should eat your old " + oldWeapon.name + ".\n\
+After doing this, your Slime Pet learns a new skill, " + oldAttack.name + ".")
                         print("And after seeing this beautiful sight 2 disgusted goblins jump out of the trees to take you on.")
                         location = "forest2"
                         fightSequence([deepcopy(goblin), deepcopy(goblin)], location, [[]])
@@ -1880,7 +1894,7 @@ past the default 100 value, you might not be able to outrun the rambunctious rod
     while outrunFight != "fight" and outrunFight != "outrun":
         outrunFight = input("That won't work this time! Do you 'fight' or 'outrun' the rat? ")
     if outrunFight == "fight":
-        fightSequence([deepcopy(rat), deepcopy(babyRat), deepcopy(babyRat)], location, [["Baby Rat"]])
+        fightSequence([deepcopy(rat), deepcopy(babyRat), deepcopy(babyRat)], location, [["Baby Rat"], ["Baby Rat", "Baby Rat"]])
         if restart:
             return
         allIn = True
