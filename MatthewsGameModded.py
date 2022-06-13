@@ -667,53 +667,6 @@ and the guard hesitantly stops his attack to let you plead your case.")
 
 
 
-def fightSequenceOld(enemy, location):       
-    global player
-    while enemy > 0 and player.currentHealth > 0: 
-        print("Enemy's health: ", enemy) 
-        print("Max's health: ", player.currentHealth)
-        if allIn == False:
-            prompt = input("'hit' or 'dodge'? ") 
-            while prompt != "hit" and prompt != "dodge":
-                prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ") 
-        elif allIn == True: 
-            prompt = input("'hit' or 'dodge' or 'all in'? ")
-            while prompt != "hit" and prompt != "dodge" and prompt != "all in":
-                prompt = input("That won't work this time! Do you want to 'hit' or 'dodge' or go 'all in'? ")
-        if prompt == "hit": 
-            enemyDamage = random.randint(0,5)
-            enemy -= enemyDamage * weaponStrength 
-            print("You hit the enemy and they took " + str(enemyDamage * weaponStrength) + " damage!") 
-            playerDamage = random.randint(10,20)
-            player.currentHealth -= playerDamage 
-            print("The enemy hit you and you took " + str(playerDamage) + " damage!") 
-        elif prompt == "dodge": 
-            damage = random.randint(0,5) 
-            player.currentHealth -= damage 
-            print("You dodged the attack and took " + str(damage) + " damage!") 
-        elif prompt == "all in": 
-            damage = random.randint(0,1) 
-            if damage == 0: 
-                end() 
-                return
-            else:
-                enemy = 0
-        if player.currentHealth <= 0: 
-            end()
-            return
-        if enemy <= 0:
-            if location == "village": 
-                print(outroMessages[0]) 
-            elif location == "forest": 
-                print(outroMessages[1]) 
-            elif location == "old bridge":
-                print(outroMessages[2])
-            elif location == "sewers":
-                print(outroMessages[3])
-
-
-
-
 def fightSequence(enemies : Enemy, location : str, specialEnding : str):
     global player, specialFightEnding
 
@@ -1372,7 +1325,7 @@ def stringWord(emptyStr):
 
 
 
-#Two functions in relation to the "caveWatchtower" scene
+
 def cave():
     global player
     print("You hesitantly enter the cave, anxious about who or what might await you inside the dark depths. Fortunately, luck \n\
@@ -1389,28 +1342,12 @@ your slime pet jumps from your bag and consumes the entire bottle, glass include
         potionTroll = False
         return potionTroll
     elif drinkDroptake == "drink":
-        healthNothingdeadly = random.randint(1,3)
-        if healthNothingdeadly == 1:
-            print("You drink the potion, but after sitting down, you instantly pass out. You wake up in the morning feeling strangely \n\
+        print("You drink the potion, but after sitting down, you instantly pass out. You wake up in the morning feeling strangely \n\
 healthier, and relish in the fact that you now have 50 more health!")
-            player.maxHealth += 50
-            player.currentHealth = min(player.maxHealth, player.currentHealth + 50)
-            potionTroll = False
-            return potionTroll
-        elif healthNothingdeadly == 2:
-            print("You drink the potion, but feel nothing. You wake up in the morning and notice that you are in fact still alive, \n\
-and end up assuming that the benefits of the drink became nullified just like the person who left it.")
-            potionTroll = False
-            return potionTroll
-        elif healthNothingdeadly == 3:
-            print("You drink the potion, and feel completely normal.")
-            print(" ")
-            print(" ")
-            print(" ")
-            print("You wake up, slay the dragon, save Misty, and live a happy and carefree life....NOT.")
-            end()
-            potionTroll = False
-            return potionTroll
+        player.maxHealth += 50
+        player.currentHealth = min(player.maxHealth, player.currentHealth + 50)
+        potionTroll = False
+        return potionTroll
     elif drinkDroptake == "drop":
         print("You drop the potion carelessly on the ground, and am unsurprised as you witness the potion's contents dissolve the hard rock \n\
 below. You go to sleep, and wake up, happy that you avoided a possibly deadly drink.")
@@ -1604,6 +1541,8 @@ quickAttack = Attack([], [], 35, 0, 2, "quick attack") # Just finisher with a di
 heaviestBlow = Attack([], [], 125, 0, 6, "heaviest blow")
 splash = Attack([StatusEffect(InflictionType.WET, 5)], [100], 3, 3, 1, "splash")
 quickClubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 10, 10, 2, "quick club bash")
+bite = Attack([StatusEffect(InflictionType.POISON, 4), StatusEffect(InflictionType.BLEED, 4)], [5, 5], 5, 5, 2, "bite")
+scratch = Attack([StatusEffect(InflictionType.BLEED, 4)], [25], 15, 5, 1, "scratch")
 
 #Globalizing variables
 
@@ -1621,7 +1560,8 @@ def main():
     slime = Enemy(25, [slimeHug], "Pet Slime", 0.5)
     troll = Enemy(125, [quickClubBash, splash], "troll", 0.0)
     mutant = Enemy(300, [punch, heavyPunch], "mutant", 0.25)
-    rat = random.randint(90,110)
+    rat = Enemy(100, [bite, scratch], "Rat", 0.25)
+    babyRat = Enemy(25, [bite, scratch, splash], "Baby Rat", 0.5)
     allIn = False
     player = Player(150)
     potionTroll = False
@@ -1940,7 +1880,7 @@ past the default 100 value, you might not be able to outrun the rambunctious rod
     while outrunFight != "fight" and outrunFight != "outrun":
         outrunFight = input("That won't work this time! Do you 'fight' or 'outrun' the rat? ")
     if outrunFight == "fight":
-        fightSequenceOld(rat, location)
+        fightSequence([deepcopy(rat), deepcopy(babyRat), deepcopy(babyRat)], location, [["Baby Rat"]])
         if restart:
             return
         allIn = True
@@ -1971,7 +1911,7 @@ and waddles away in the other direction. In the process though you did cut your 
                 print("Despite your determination in trying to outrun the creature.\n\
 However, it doesn't fully defeat you when it catches up with you, and as such you are forced to fight it.")
                 player.currentHealth -= 50
-                fightSequenceOld(rat, location)
+                fightSequence([deepcopy(rat), deepcopy(babyRat), deepcopy(babyRat)], location, [["Baby Rat"]])
                 if restart:
                     return
                 allIn = True
@@ -2084,7 +2024,9 @@ You drink it, and bask in the glory that is being a nonviolent person before hea
                 print("You didn't guess the word, and sulk about it before heading to the door separating you from the girl you came to save and the tyrannical creature you must defeat...")
     elif len(emptyStr) < 6:
         print("You weren't a pacifist! The sorcerer sighs, but because you're mad at the sorcerer for not giving you a chance, you try to attack him. The sorcerer teleports away just in time, and you hit the wall \n\
-with your sword in anger. After hitting the wall a couple more times just for good measure, you head to the door separating you from Misty and Joshro...")
+with your sword in anger. But before leaving the sorcerer comes back and says that he dislikes you less than Joshro, and that he will give you a fair shot. You are healed back to full;\n\
+you then head to the door separating you from Misty and Joshro...")
+    player.currentHealth = player.maxHealth
     time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
