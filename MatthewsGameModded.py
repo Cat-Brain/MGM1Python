@@ -1372,7 +1372,7 @@ def main():
     goblin = Enemy(100, 100, [quickStab, rockThrow], "Goblin", 0.0)
     slime = Enemy(25, 50, [slimeHug], "Pet Slime", 0.5)
     troll = Enemy(125, 125, [quickClubBash, splash], "troll", 0.0)
-    mutant = Enemy(1, 300, [punch, heavyPunch], "mutant", 0.25)
+    mutant = Enemy(300, 300, [punch, heavyPunch], "mutant", 0.25)
     rat = Enemy(100, 200, [bite, scratch], "Rat", 0.25)
     babyRat = Enemy(25, 50, [bite, scratch, splash], "Baby Rat", 0.5)
     guard = Enemy(200, 200, [heavyBlow, quickAttack], "Unloyal Guard", 0.0)
