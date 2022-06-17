@@ -342,6 +342,12 @@ class Weapon:
 
     def LearnAttack(self, attack : Attack):
         self.attacks.append(attack)
+
+    def KnowsAttack(self, name : str):
+        for attack in self.attacks:
+            if attack.name == name:
+                return True
+        return False
     
 
 
@@ -517,11 +523,11 @@ It does high damage, but does all of it's damage upfront but does enough damage 
 
 
 
-def end(): 
-    print("You have been slain.") 
-    enter = input("Press 'enter' on your keyboard to start a new game:)") 
+def end():
     global restart
     restart = True
+    input("You have been slain.\n\
+Press 'enter' on your keyboard to start a new game. :) ")
 
 
 
@@ -614,61 +620,8 @@ of what the number is, and try to add up to the sum of it (keep in mind you'll h
 
 
 
-def guardFightsequence():
-    global player
-    guard = 150
-    while guard > 0 and player.currentHealth > 0:
-        print("Guard's health: ", guard) 
-        print("Max's health: ", player.currentHealth)
-        if allIn == False:
-            prompt = input("'hit' or 'dodge' or 'plead'? ") 
-            while prompt != "hit" and prompt != "dodge" and prompt != "plead":
-                prompt = input("That won't work this time! Do you want to 'hit' or 'dodge' or 'plead'? ") 
-        elif allIn == True: 
-            prompt = input("'hit' or 'dodge' or 'plead' or 'all in'? ")
-            while prompt != "hit" and prompt != "dodge" and prompt != "plead" and prompt != "all in":
-                prompt = input("That won't work this time! Do you want to 'hit' or 'dodge' or 'plead' or go 'all in'? ")
-        if prompt == "hit": 
-            guardDamage = random.randint(0,5)
-            guard -= guardDamage * weaponStrength 
-            print("You hit the enemy and they took " + str(guardDamage * weaponStrength) + " damage!") 
-            playerDamage = random.randint(10,20)
-            player.currentHealth -= playerDamage 
-            print("The enemy hit you and you took " + str(playerDamage) + " damage!") 
-        elif prompt == "dodge": 
-            damage = random.randint(0,5) 
-            player.currentHealth -= damage 
-            print("You dodged the attack and took " + str(damage) + " damage!") 
-        elif prompt == "plead":
-            morality = random.randint(1,2)
-            if morality == 1:
-                playerDamage = random.randint(5,10)
-                player.currentHealth -= playerDamage
-                print("You risk getting hit to try and desperately plead with the only human you've had to fight so far, \n\
-but the guard rejects your cries for peace and hits you, making you lose ",playerDamage," health!")
-            else:
-                print("You risk getting hit to try and desperately plead with the only human you've had to fight so far, \n\
-and the guard hesitantly stops his attack to let you plead your case.")
-                time.sleep(currentSettings.sleepTime)
-                return morality
-        elif prompt == "all in": 
-            damage = random.randint(0,1) 
-            if damage == 0: 
-                end() 
-                return
-            else:
-                guard = 0
-        if player.currentHealth <= 0: 
-            end()
-            return
-        if guard <= 0:
-            print("The guard comes crashing to the ground, and you take pity on him as you open the doors to the keep, where Misty and the ferocious dragon are located...")
-
-
-
-
-def fightSequence(enemies : Enemy, location : str, specialEnding : str):
-    global player, specialFightEnding
+def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
+    global player, specialFightEnding, specialFightEndingMonsters
 
     specialFightEnding = False
     enemiesC = deepcopy(enemies) # The C in enemiesC stands for copy.
@@ -780,6 +733,15 @@ def fightSequence(enemies : Enemy, location : str, specialEnding : str):
                 print("")
 
             if not player.IsStunned():
+                if spareable and player.weapon.CurrentAttack().name == "spare":
+                    spareSucceeds = random.randint(0, 5) == 5
+                    if spareSucceeds:
+                        print("You attempt to spare and are successful!")
+                        specialFightEnding = True
+                        specialFightEndingMonsters = enemiesC
+                        fightOn = False
+                        break
+                    print("You attempt to spare and are unsuccessful.")
                 playerHit = player.TakeTurn()
                 enemiesC[target].ApplyHit(playerHit)
                 player.currentHealth += int(floor(float(playerHit.damage) * player.weapon.leech))
@@ -864,6 +826,7 @@ def fightSequence(enemies : Enemy, location : str, specialEnding : str):
                     print("The " + printableCombinedEnemyNames + " have chosen to stop fighting.")
                 fightOn = False
                 specialFightEnding = True
+                specialFightEndingMonsters = enemiesC
                 break
 
 
@@ -871,21 +834,11 @@ def fightSequence(enemies : Enemy, location : str, specialEnding : str):
     if player.currentHealth <= 0: 
         end()
         return
-    else:
-        if location == "village": 
-            print(outroMessages[0]) 
-        elif location == "forest":
-            print(outroMessages[1])
-        elif location == "old bridge":
-            print(outroMessages[2])
-        elif location == "sewers":
-            print(outroMessages[3])
-        elif location == "forest2":
-            print(outroMessages[4]) 
 
     player.inflictions.clear()
     player.inflictionAttackers.clear()
     player.currentHealth = min(player.maxHealth, player.currentHealth + 50)
+    print("You end the fight with " + str(player.currentHealth) + " health.")
 
 
 
@@ -1351,27 +1304,23 @@ Before you take a swig, you doubt how safe ingesting the bottle's contents will 
     if player.weapon.name == "Pet Slime":
         print("But before being able to do anything,\n\
 your slime pet jumps from your bag and consumes the entire bottle, glass included. Slime Pet has learned 'slime spike'")
-        player.weapon = Weapon([slimeHug, slimeSpike], "Neurished Pet Slime", 1.0)
-        potionTroll = False
-        return potionTroll
+        player.weapon.LearnAttack(slimeSpike)
+        return False
     elif drinkDroptake == "drink":
         print("You drink the potion, but after sitting down, you instantly pass out. You wake up in the morning feeling strangely \n\
 healthier, and relish in the fact that you now have 50 more health!")
         player.maxHealth += 50
         player.currentHealth = min(player.maxHealth, player.currentHealth + 50)
-        potionTroll = False
-        return potionTroll
+        return False
     elif drinkDroptake == "drop":
         print("You drop the potion carelessly on the ground, and am unsurprised as you witness the potion's contents dissolve the hard rock \n\
 below. You go to sleep, and wake up, happy that you avoided a possibly deadly drink.")
-        potionTroll = False
-        return potionTroll
+        return False
     elif drinkDroptake == "take":
         print("For some almost supernatural reason, you feel as though you can use the potion for something greater, and decide \n\
 to store it in your pack for later use. You have a dream that a large green creature asks you for the potion in exchange for \n\
 safe passage across a path, but brush it off as your mind playing tricks on you and have a pretty uneventful rest of the night.")
-        potionTroll = True
-        return potionTroll
+        return True
 
 
 
@@ -1437,10 +1386,23 @@ def home():
             tavernInncottage = input("That won't work this time! Do you make the 'tavern', 'cottage', or 'inn' your new home? ")
     homeChosen = True
     return tavernInncottage
-# def comingHome():
-#     print("You return to the",x)
-# comingHome()
 
+
+
+
+def printOutro():
+    global location
+    if location == "village":
+        print(outroMessages[0])
+    elif location == "forest":
+        print(outroMessages[1])
+    elif location == "old bridge":
+        print(outroMessages[2])
+    elif location == "sewers":
+        print(outroMessages[3])
+    elif location == "forest2":
+        print(outroMessages[4])
+    
 
 
 
@@ -1550,23 +1512,25 @@ arrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, 1, "ar
 deepCut = Attack([StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15)], [100, 50, 25], 0, 0, 1, "deep cut")
 finisher = Attack([], [], 35, 0, 2, "finisher")
 heavyBlow = Attack([], [], 100, 0, 5, "heavy blow")
-quickAttack = Attack([], [], 35, 0, 2, "quick attack") # Just finisher with a different name.
+quickAttack = Attack([], [], 35, 0, 2, "quick attack") # Just finisher with a different name LOL.
 heaviestBlow = Attack([], [], 125, 0, 6, "heaviest blow")
 splash = Attack([StatusEffect(InflictionType.WET, 5)], [100], 3, 3, 1, "splash")
 quickClubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 10, 10, 2, "quick club bash")
 bite = Attack([StatusEffect(InflictionType.POISON, 4), StatusEffect(InflictionType.BLEED, 4)], [5, 5], 5, 5, 2, "bite")
 scratch = Attack([StatusEffect(InflictionType.BLEED, 4)], [25], 15, 5, 1, "scratch")
+spare = Attack([], [], 0, 0, 1, "spare")
 
 #Globalizing variables
 
-global location, ogre, goblin, troll, mutant, rat, player, allIn, weaponChoice, restart, \
-weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
-currentSettings : Settings
 restart = True
 specialFightEnding = False
+specialFightEndingMonsters = []
+global location, player, allIn, weaponChoice, \
+weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
+currentSettings : Settings
 
 def main():
-    global location, ogre, goblin, troll, mutant, rat, player, allIn, weaponChoice, restart, specialFightEnding, \
+    global location, player, allIn, weaponChoice, specialFightEnding, restart, \
     weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
     restart = False
     ogre = Enemy(100, [clubBash, punch], "Ogre", 0.0)
@@ -1576,6 +1540,7 @@ def main():
     mutant = Enemy(300, [punch, heavyPunch], "mutant", 0.25)
     rat = Enemy(100, [bite, scratch], "Rat", 0.25)
     babyRat = Enemy(25, [bite, scratch, splash], "Baby Rat", 0.5)
+    guard = Enemy(200, [heavyBlow, quickAttack], "Unloyal Guard", 0.0)
     allIn = False
     player = Player(150)
     potionTroll = False
@@ -1612,7 +1577,7 @@ on your journey.")
     while fightRun != "fight" and fightRun != "run":
         fightRun = input("That won't work this time! Do you want to 'fight' or 'run' away from the ogre? ") 
     if fightRun == "fight": 
-        fightSequence([deepcopy(ogre)], location, [[]])
+        fightSequence([deepcopy(ogre)], False, [[]])
         if restart:
             return
         allIn = True 
@@ -1627,7 +1592,7 @@ gold coin yet or not?'")
             fightAvoid = input("That won't work this time! PICK A NUMBER: ")
         if player.weapon.name == "Ogre in a Bottle":
             print("The ogre then ignores what you say and calls you back saying incoherently that you smell suspicious, and you're forced to fight them.")
-            fightSequence([deepcopy(ogre)], location, [[]])
+            fightSequence([deepcopy(ogre)], False, [[]])
         elif fightAvoid == "1": 
             print("The ogre seems to like that option, and lets you go as he \n\
 meanders back to the tavern. You regain your composure and continue walking \n\
@@ -1637,10 +1602,11 @@ to the village exit.")
             print("The ogre becomes enraged and slams you on the ground, howling \n\
 like a dog as he searches himself for the dagger he carries. You get back \n\
 on your feet and pull out your weapon.") 
-            fightSequence([deepcopy(ogre)], location, [[]])
+            fightSequence([deepcopy(ogre)], False, [[]])
             if restart:
                 return
             allIn = True
+            printOutro()
     time.sleep(currentSettings.sleepTime)        
     print(" ")
     print("++++++++++++++++")
@@ -1659,15 +1625,16 @@ on your feet and pull out your weapon.")
         fightPersuade = input("That won't work this time! Do you want to 'fight' or 'persuade' the goblin? ")
     if fightPersuade == "fight":
         print("A Pet Slime also jumps out of the bushes to protect their owner!")
-        fightSequence([deepcopy(goblin), deepcopy(slime)], location, [[]])
+        fightSequence([deepcopy(goblin), deepcopy(slime)], False, [[]])
         if restart:
             return
+        printOutro()
         allIn = True 
     elif fightPersuade == "persuade":
         parkour = input("The goblin runs away, and you scramble after it. To catch up to the goblin, you can either 'slide' under a fallen log, or \n\
 'vault' over a thorny bush. What do you do? ")
         while parkour != "slide" and parkour != "vault":
-            parkour = input("That won't work this time! What do you do? ")
+            parkour = input("That won't work this time! What do you do? 'slide' or 'vault'? ")
         if parkour == "slide":
             persuade = input("You successfully slide under the log, and find the goblin scurried up on a tree branch, \n\
 just out of reach. What do you say to the scared creature? \n\
@@ -1687,29 +1654,30 @@ back after you finish your quest to come work for him to pay off your debt. You 
             elif persuade == "2":
                 print("The goblin becomes furious after you pet HIS pet slime, and swiftly slashes you with his claws. \n\
 You're able to get up, but because of the surprise attack, you've lost valuable health.")
-                goblinFight = True
-                while goblinFight == True:
-                    player.maxHealth = int(player.maxHealth / 2)
-                    player.currentHealth = int(player.currentHealth / 2)
-                    weaponStrength = int(weaponStrength / 2)
-                    fightSequence([deepcopy(goblin), deepcopy(slime)], location, [["Pet Slime"]])
-                    player.maxHealth = int(player.maxHealth * 2)
-                    player.currentHealth = player.maxHealth
-                    weaponStrength = int(weaponStrength * 2)
-                    goblinFight = False
-                    if (specialFightEnding):
-                        specialFightEnding = False
-                        print("Oddly enough, you have now seemingly befriended the pet slime. The Pet Slime has replaced your weapon.")
-                        oldWeapon = player.weapon
-                        oldAttack = oldWeapon.attacks[0]
-                        player.weapon = Weapon([slimeHug, oldAttack], "Pet Slime", 1.0)
-                        print("After taking the place as your weapon, the Slime Pet decides that it should eat your old " + oldWeapon.name + ".\n\
-After doing this, your Slime Pet learns a new skill, " + oldAttack.name + ".")
-                        print("And after seeing this beautiful sight 2 disgusted goblins jump out of the trees to take you on.")
-                        location = "forest2"
-                        fightSequence([deepcopy(goblin), deepcopy(goblin)], location, [[]])
+                player.maxHealth = int(player.maxHealth / 2)
+                player.currentHealth = int(player.currentHealth / 2)
+                weaponStrength = int(weaponStrength / 2)
+                fightSequence([deepcopy(goblin), deepcopy(slime)], False, [["Pet Slime"]])
                 if restart:
                     return
+                printOutro()
+                player.maxHealth = int(player.maxHealth * 2)
+                player.currentHealth = player.maxHealth
+                weaponStrength = int(weaponStrength * 2)
+                if (specialFightEnding):
+                    specialFightEnding = False
+                    print("Oddly enough, you have now seemingly befriended the pet slime. The Pet Slime has replaced your weapon.")
+                    oldWeapon = player.weapon
+                    oldAttack = oldWeapon.attacks[0]
+                    player.weapon = Weapon([slimeHug, oldAttack], "Pet Slime", 1.0)
+                    print("After taking the place as your weapon, the Slime Pet decides that it should eat your old " + oldWeapon.name + ".\n\
+After doing this, your Slime Pet learns a new skill, '" + oldAttack.name + "'.")
+                    print("And after seeing this beautiful sight 2 disgusted goblins jump out of the trees to take you on.")
+                    location = "forest2"
+                    fightSequence([deepcopy(goblin), deepcopy(goblin)], False, [[]])
+                    if restart:
+                        return
+                    printOutro()
                 allIn = True
         else:
             print("You try to vault over the bush, but because you skipped leg day \n\
@@ -1785,9 +1753,10 @@ quietly to continue your journey.")
 you disrespect my bridge, and then you don't even give me something for my dehydration! This won't do! I'm going to have to teach you a lesson in manners!")
             print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
-            fightSequence([deepcopy(troll)], location, [[]])
+            fightSequence([deepcopy(troll)], False, [[]])
             if restart:
                 return
+            printOutro()
             allIn = True
             print("P.S., while fighting the troll, the potion broke in your bag, so it's of no use to you now, and you think for a second how much \n\
 better that situation could've turned out if you would've given the troll the potion in the first place, but ah whatever it's just a game, morals don't matter.")
@@ -1797,9 +1766,10 @@ you blank out, and the troll notices this. 'WOW! So first you disrespect my brid
 This won't do! I'm going to have to teach you a lesson in manners!")
         print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
-        fightSequence([deepcopy(troll)], location, [[]])
+        fightSequence([deepcopy(troll)], False, [[]])
         if restart:
             return
+        printOutro()
         allIn = True
     player.weapon.LearnAttack(splash)
     print("Before leaving, you let your " + player.weapon.name + " soak in the water, and it seems to absorb it.\n\
@@ -1858,14 +1828,17 @@ In one of the drawers, you find a damaged note that warns its readers to be wear
     print("After leaving the", x, "in the morning, you turn the corner, but come face to face with a hideously disfigured mutant that shoves you to the ground before \n\
 exclaiming:'LeAvE, RiGhT nOw.' Obviously, you don't move, and the mutant spits on the ground before getting into a battle stance, and as such you do the same.")
     location = "random street"
-    fightSequence([deepcopy(mutant)], location, [[]])
+    fightSequence([deepcopy(mutant)], False, [[]])
     if restart:
         return
+    printOutro()
     spareKill = input("The mutant crashes to the ground, pleading with you to spare it. Do you 'spare' or 'kill' the mutant? ")
     while spareKill != "spare" and spareKill != "kill":
         spareKill = input("That won't work this time! Do you 'spare' or 'kill' the mutant? ")
     if spareKill == "spare":
         print("You let the mutant go, and it shambles off into the early morning darkness.")
+        print("Then you're " + player.weapon.name + " learns 'spare'.")
+        player.weapon.LearnAttack(spare)
         emptyStr, strings = stringWord(emptyStr)
     elif spareKill == "kill":
         print("You end the mutant.")
@@ -1894,9 +1867,23 @@ past the default 100 value, you might not be able to outrun the rambunctious rod
     while outrunFight != "fight" and outrunFight != "outrun":
         outrunFight = input("That won't work this time! Do you 'fight' or 'outrun' the rat? ")
     if outrunFight == "fight":
-        fightSequence([deepcopy(rat), deepcopy(babyRat), deepcopy(babyRat)], location, [["Baby Rat"], ["Baby Rat", "Baby Rat"]])
+        fightSequence([deepcopy(rat), deepcopy(babyRat), deepcopy(babyRat)], False, [["Baby Rat"], ["Baby Rat", "Baby Rat"]])
         if restart:
             return
+        if specialFightEnding:
+            ratOrRats = "rat"
+            if len(specialFightEndingMonsters) > 1:
+                ratOrRats = "rats"
+            prompt = input("After you defeat the parent rat, the " + ratOrRats + " do you want to chase after them? ('yes' or 'no') ")
+            while prompt != "yes" and prompt != "no":
+                prompt = input("That won't work this time. Do you want to chase after them? ('yes' or 'no') ")
+            if prompt == "yes":
+                fightSequence(deepcopy(specialFightEndingMonsters), False, [[]])
+            else:
+                print("You decide to spare the " + ratOrRats + ".")
+                if not player.weapon.KnowsAttack("spare"):
+                    print("Then you're " + player.weapon.name + " learns 'spare'.")
+                    player.weapon.LearnAttack(spare)
         allIn = True
     elif outrunFight == "outrun":
         print("You decide to try your luck and athletic skills by ceasing to fight the rat and instead violently thrash through the water \n\
@@ -1925,14 +1912,29 @@ and waddles away in the other direction. In the process though you did cut your 
                 print("Despite your determination in trying to outrun the creature.\n\
 However, it doesn't fully defeat you when it catches up with you, and as such you are forced to fight it.")
                 player.currentHealth -= 50
-                fightSequence([deepcopy(rat), deepcopy(babyRat), deepcopy(babyRat)], location, [["Baby Rat"]])
+                fightSequence([deepcopy(rat), deepcopy(babyRat), deepcopy(babyRat)], False, [["Baby Rat"], ["Baby Rat", "Baby Rat"]])
                 if restart:
                     return
-                allIn = True
+                if specialFightEnding:
+                    ratOrRats = "rat"
+                    if len(specialFightEndingMonsters) > 1:
+                        ratOrRats = "rats"
+                    prompt = input("After you defeat the parent rat, the " + ratOrRats + " do you want to chase after them? ('yes' or 'no') ")
+                    while prompt != "yes" and prompt != "no":
+                        prompt = input("That won't work this time. Do you want to chase after them? ('yes' or 'no') ")
+                    if prompt == "yes":
+                        fightSequence(deepcopy(specialFightEndingMonsters), False, [[]])
+                    else:
+                        print("You decide to spare the " + ratOrRats + ".")
+                        if not player.weapon.KnowsAttack("spare"):
+                            print("Then you're " + player.weapon.name + " learns 'spare'.")
+                            player.weapon.LearnAttack(spare)
+
             else:
                 print("In a surprising turn of events, you manage to wade quickly enough away from the rat that it decides that you're not worth the trouble, \n\
 and waddles away in the other direction. In the process though your knee got cut by a rock.")
                 player.currentHealth -= 25
+    printOutro()
     time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
@@ -1954,26 +1956,20 @@ appearance, and, in addition to that, offers more protection.")
     player.maxHealth += 50
     print("Approaching the keep, you see a human guard ahead that won't move no matter what distractions you use to guide him away. After some impatient waiting, you conclude \n\
 that the only way to enter the keep is through a direct encounter with the guard. A fight is inevitable, but the only question now is *how* the interaction with the guard will end...")
-    morality = guardFightsequence()
+    fightSequence([guard], True, [[]])
     if restart:
         return
-    if morality == 2:
+    if specialFightEnding:
         guardAlive = True
         print("The guard, whose name you soon find out is Bruce, explains to you that he doesn't even really like Joshro or his ideals, \n\
 but only works for him because the pay is good and he has mouths to feed. This seems like a fair reason to work for a ruthless overlord, so you empathize with him \n\
 and offer to give him the riches found inside Joshro's treasury in exchange for him helping you take on Joshro.")
         print(" ")
-        helpNot = random.randint(1,2)
-        if helpNot == 1:
-            print("After some thinking, Bruce declines your offer, stating that he 'has other methods of making money' in a concerningly \n\
-sinister voice... \n\
-You don't question it, because he tells you that he'll instead let you past the gate if you promise to keep this encounter private. \n\
-You nod in agreement, and enter the keep, where the evil Joshro and precious Misty are located...")
-            
-        else:
-            print("After some thinking, Bruce accepts your offer, and tells you that he will return to you only in the final fight with Joshro with the sole purpose of offering aid. \n\
-He also makes you promise to give him a substantial amount of the riches located inside the keep as compensation for his support. You nod in agreement, and enter the keep, where the evil Joshro and precious Misty are located... ")
-            guardHelpNot = True
+        print("After some thinking, Bruce declines your offer, and says that he is not the fighter he once was, but because he likes you, he will give you an ancient rejuvination potion. \n\
+You nod in agreement, drink the potion, and enter the keep, where the evil Joshro and precious Misty are located... ")
+        player.maxHealth += 50
+        player.currentHealth = min(player.maxHealth, player.currentHealth + 50)
+        guardHelpNot = False
         emptyStr, strings = stringWord(emptyStr)
     time.sleep(currentSettings.sleepTime)
     print(" ")
@@ -2090,13 +2086,13 @@ you then head to the door separating you from Misty and Joshro...")
     while specialThanks != "yes" and specialThanks != "no":
         specialThanks = input("That won't work this time! Do you want to read the note ('yes' or 'no')? ")
     if specialThanks == "yes":
-        print("This game took me a little bit under 2 months to make, and it was definitely a rollercoaster \n\
+        print("This game took me(Matthew) a little bit under 2 months to make, and it was definitely a rollercoaster \n\
 of hating programming and loving it, but I'd just like to say a couple quick things about some of the people who helped/supported me through \n\
 the development process... ") 
         time.sleep(currentSettings.sleepTime)
         print(" ")
         print("The first person I'd like to thank is God for allowing me to be here and have the experience to be able to make such a cool game, as well as allowing me to meet wonderful people \n\
-like Jasun, Jordan, Corbin, and other people I'd consider friends:)")
+like Jasun, Jordan(That's me, the other dev!), Corbin, and other people I'd consider friends:)")
         time.sleep(currentSettings.sleepTime)
         print(" ")
         print("The next person is, of course, Jasun, for two very good reasons. First and foremost, without Jasun pushing me to constantly upgrade and continue learning Python as well as \n\
@@ -2132,7 +2128,7 @@ personal issues were taking place that could've definitely sunk my drive to fini
 as well as showing interest in wanting to play my game once it was finished:)")
         time.sleep(currentSettings.sleepTime)
         print("~~~~~~~~~~~~~~~~")
-        print("JASUN, LUKE, CHARLOTTE, NOX, JORDAN, CORBIN, MORGAN, SHEPARD, BENNY, LUKAS, and many others for playtesting the game!:)")
+        print("JASUN, LUKE, CHARLOTTE, NOX, JORDAN(I'm back again =]), CORBIN, MORGAN, SHEPARD, BENNY, LUKAS, and many others for playtesting the game!:)")
         time.sleep(currentSettings.sleepTime)
         print("~~~~~~~~~~~~~~~~")
         print("And lastly, YOU, the player, whoever you are, for beating my broken but meaningful mess of a game!:)")
@@ -2146,7 +2142,7 @@ as well as showing interest in wanting to play my game once it was finished:)")
         print(" ")
         print("++++++++++++++++")
         print(" ")
-        print("Thanks for playing my game! If you're curious about what the '(NUMBER out of 4)' means next to the name of the ending you got, try playing the game again and find out what would happen if you did things differently!:)")
+        print("Thanks for playing our game! If you're curious about what the '(NUMBER out of 4)' means next to the name of the ending you got, try playing the game again and find out what would happen if you did things differently!:)")
     time.sleep(60)
 
 
