@@ -180,15 +180,17 @@ class Enemy:
     inflictions : StatusEffect
     inflictionAttackers : int
     health : int
+    maxHealth : int
     activeAttack : int
     attacks : Attack
     name : str
     leech : float
 
-    def __init__(self, health, attacks : Attack, name : str, leech : float):
+    def __init__(self, health : int, maxHealth : int, attacks : Attack, name : str, leech : float):
         self.inflictions = []
         self.inflictionAttackers = []
         self.health = health
+        self.maxHealth = maxHealth
         self.activeAttack = 0
         self.attacks = deepcopy(attacks)
         self.name = name
@@ -214,14 +216,16 @@ class Enemy:
 
     def TakeTurn(self, currentIndex : int):
         hit : Hit
+        enemiesBorn = []
 
         if self.CurrentAttack().length <= self.CurrentAttack().timeSinceStart:
             hit = self.CurrentAttack().RollDamage(currentIndex, self.FindDamageReduction())
-            if hit.damage != 0 or hit.inflictions != []:
+            if self.CurrentAttack().name == "grow head":
+                enemiesBorn = [deepcopy(joshroHead)]
+            elif hit.damage != 0 or hit.inflictions != []:
                 print(self.name + " does " + self.CurrentAttack().name + ". This attack deals " + str(hit.damage) + " damage.")
                 for infliction in hit.inflictions:
                     print("This attack inflicts " + infliction.Name() + " for " + str(infliction.durationLeft) + " turns.")
-
             else:
                 print(self.name + " misses.")
 
@@ -236,7 +240,7 @@ class Enemy:
                 print(self.name + " continues to prepare their " + self.CurrentAttack().name + ". They will be done next turn.")
             self.attacks[self.activeAttack].timeSinceStart += 1
 
-        return hit
+        return hit, enemiesBorn
 
     def ApplyHit(self, hit : Hit):
         self.health -= hit.damage
@@ -665,14 +669,18 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                     unblockedDamage = 0
                     blockedDamage = 0
                     if not enemiesC[i].IsStunned():
-                        enemyHit = enemiesC[i].TakeTurn(i)
+                        enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
+                        if len(enemiesBorn) != 0:
+                            enemiesC.extend(enemiesBorn)
+                            for enemy in enemiesBorn:
+                                print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
                         unblockedDamage += enemyHit.damage
                         damageDelt = floor(enemyHit.damage / 2)
                         blockedDamage += damageDelt
                         heal = int(floor(float(damageDelt) * enemiesC[i].leech))
                         if heal != 0:
                             print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                            enemiesC[i].health = min(enemies[cToOriginal[i]].health * 2, enemiesC[i].health + heal)
+                            enemiesC[i].health = min(enemiesC.maxHealth * 2, enemiesC[i].health + heal)
                         player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i), True)
                         print("You dodged the attack and took " + str(blockedDamage) + " damage instead of taking " + str(unblockedDamage) + " damage!")
                     else:
@@ -681,12 +689,16 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
 
                 else:
                     if not enemiesC[i].IsStunned():
-                        enemyHit = enemiesC[i].TakeTurn(i)
+                        enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
+                        if len(enemiesBorn) != 0:
+                            enemiesC.extend(enemiesBorn)
+                            for enemy in enemiesBorn:
+                                print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
                         player.ApplyHit(enemyHit, False)
                         heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                         if heal != 0:
                             print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                            enemiesC[damageDealer[i]].health = min(enemies[cToOriginal[damageDealer[i]]].health * 2, enemiesC[damageDealer[i]].health + heal)
+                            enemiesC[damageDealer[i]].health = min(enemies[min(len(enemies) - 1, cToOriginal[damageDealer[i]])].health * 2, enemiesC[damageDealer[i]].health + heal)
                         print("Becuase you were stunned you didn't block.\n")
                     else:
                         print(enemiesC[i].name + " did not attack this round as they were stunned.")
@@ -706,19 +718,23 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                 heal = int(floor(float(inflictionDamageDelt[i]) * enemiesC[damageDealer[i]].leech))
                 if heal != 0:
                     print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of " + respectiveNames[i] + ".")
-                    enemiesC[damageDealer[i]].health = min(enemies[cToOriginal[damageDealer[i]]].health * 2, enemiesC[damageDealer[i]].health + heal)
+                    enemiesC[damageDealer[i]].health = min(enemies[min(len(enemies) - 1, cToOriginal[damageDealer[i]])].health * 2, enemiesC[damageDealer[i]].health + heal)
 
 
         elif prompt == "attack":
             print("")
             for i in range(len(enemiesC)):
                 if not enemiesC[i].IsStunned():
-                    enemyHit = enemiesC[i].TakeTurn(i)
+                    enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
+                    if len(enemiesBorn) != 0:
+                        enemiesC.extend(enemiesBorn)
+                        for enemy in enemiesBorn:
+                            print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
                     player.ApplyHit(enemyHit, False)
                     heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                     if heal != 0:
                         print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                        enemiesC[i].health = min(enemies[cToOriginal[i]].health * 2, enemiesC[i].health + heal)
+                        enemiesC[i].health = min(enemiesC[i].maxHealth, enemiesC[i].health + heal)
                 else:
                     print(enemiesC[i].name + " did not attack this round as they were stunned.")
                 print("")
@@ -744,7 +760,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                     print("You attempt to spare and are unsuccessful.")
                 playerHit = player.TakeTurn()
                 enemiesC[target].ApplyHit(playerHit)
-                player.currentHealth += int(floor(float(playerHit.damage) * player.weapon.leech))
+                player.currentHealth = min(player.maxHealth, player.currentHealth + int(floor(float(playerHit.damage) * player.weapon.leech)))
                 print("")
             else:
                 print("Becuase you were stunned you didn't attack.\n")
@@ -765,8 +781,8 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
             answer = 0
             while answer < 1 or answer > len(enemiesC):
                 for i in range(len(enemiesC)):
-                    print(enemiesC[i].name + ": " + str(i + 1))
-                tempAnswer = input("or 'nevermind'. ")
+                    print(enemiesC[i].name + " with " + str(enemiesC[i].health) + " health: '" + str(i + 1) + "', or")
+                tempAnswer = input("'nevermind'. ")
                 if tempAnswer.isnumeric():
                     answer = int(tempAnswer)
                 elif tempAnswer == "nevermind":
@@ -799,7 +815,6 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                         del(player.inflictions[j - inflictionsRemovedThisFrame])
                         inflictionsRemovedThisFrame += 1
                 del(enemiesC[i - enemiesRemovedThisFrame])
-                del(cToOriginal[i - enemiesRemovedThisFrame])
                 enemiesRemovedThisFrame += 1
                 target = 0
 
@@ -828,6 +843,18 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                 specialFightEnding = True
                 specialFightEndingMonsters = enemiesC
                 break
+
+        allJoshrosHead = True
+        for enemy in enemiesC:
+            if enemy.name == "Joshro Head":
+                allJoshrosHead = allJoshrosHead and True
+            else:
+                allJoshrosHead = False
+        if allJoshrosHead:
+            print("All of Joshro's heads fall to the ground.")
+            fightOn = False
+            break
+
 
 
 
@@ -950,203 +977,6 @@ so that Joshro's reign of terror can end once and for all...")
             finalBlow -= finalBlowDamage * weaponStrength 
             print("You hit Joshro and he took " + str(finalBlowDamage * weaponStrength) + " damage!") 
             playerDamage = random.randint(10,25)
-            player.currentHealth -= playerDamage 
-            print("Joshro set you on fire and you took " + str(playerDamage) + " damage!") 
-        elif prompt == "dodge": 
-            damage = random.randint(0,5) 
-            player.currentHealth -= damage 
-            print("You dodged the attack and took " + str(damage) + " damage!")
-        if player.currentHealth <= 0: 
-            end()
-            return
-    print("With a thunderous crash, Joshro falls lifeless to the ground with an intense thump. Misty, overjoyed that she's finally been saved, \n\
-falls into your arms, and you sit on the ground to take a breather. \n\
-You did it! You slayed the dragon and saved the girl, but there are still things you must take care of...")
-
-
-
-
-def finalFightGuard():
-    global player
-    print("You open the doors to find Misty tied up to a pole, surrounded by a lake of acidic stuff that you don't even think about messing with. SUDDENLY, \n\
-you hear a loud roar from behind you, and turn to find a scaly creature that towers over you. 'YOUR EFFORTS TO GET HERE ARE ADMIRABLE, MAX. WHICH IS WHY I OFFER YOU THIS DEAL: \n\
-LEAVE NOW AND I WON'T BURN YOU, OR STAY AND END UP BECOMING A MEDIUM-RARE STEAK FOR MY MUTANT MINIONS.' Because you're a stereotypical hero that won't play it safe and leave while your \n\
-body is still at room temperature, you shake your head in disagreement, and get ready to have the fight that will determine whether all of your rigorous typing was worth it...")
-    print("As promised, Bruce enters the chamber with you, and prepares to start attacking Joshro.")
-    #Have different body parts that Max has to target (the legs, arms, and then finally the killing blow)
-    rLeg = 50
-    lLeg = 50
-    rArm = 50
-    lArm = 50
-    finalBlow = 100
-    bruceHelp = 5
-    leaveMessage = False
-    bruceDamage = random.randint(1,10)
-    time.sleep(currentSettings.sleepTime)
-    while rLeg > 0 and player.currentHealth > 0:
-        print("Joshro's right leg's health: ", rLeg) 
-        print("Max's health: ", player.currentHealth)
-        print("Times Bruce will help you: ", bruceHelp)
-        prompt = input("'hit' or 'dodge'? ") 
-        while prompt != "hit" and prompt != "dodge":
-            prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ")
-        if prompt == "hit": 
-            rLegDamage = random.randint(0,5)
-            rLeg -= rLegDamage * weaponStrength 
-            print("You hit his right leg and it took " + str(rLegDamage * weaponStrength) + " damage!")
-            if bruceHelp > 0:
-                bruceHelpNot = random.randint(1,2)  
-                if bruceHelpNot == 1:
-                    brucerLegDamage = random.randint(1,10)
-                    rLeg -= brucerLegDamage * bruceDamage
-                    print("Bruce hit his right leg and it took " + str(brucerLegDamage * bruceDamage) + " damage!")
-                    bruceHelp -= 1
-                else:
-                    print("Bruce isn't able to attack!")
-            else:
-                if leaveMessage == False:
-                    print("Bruce decides to leave after assuming that he's helped enough, leaving you to face the dragon alone!")
-                    leaveMessage = True 
-            playerDamage = random.randint(0,5)
-            player.currentHealth -= playerDamage 
-            print("Joshro razed you and you took " + str(playerDamage) + " damage!") 
-        elif prompt == "dodge": 
-            damage = random.randint(0,5) 
-            player.currentHealth -= damage 
-            print("You dodged the attack and took " + str(damage) + " damage!")
-        if player.currentHealth <= 0: 
-            end()
-            return
-    while lLeg > 0 and player.currentHealth > 0:
-        print("Joshro's left leg's health: ", lLeg) 
-        print("Max's health: ", player.currentHealth)
-        print("Times Bruce will help you:",bruceHelp)
-        prompt = input("'hit' or 'dodge'? ") 
-        while prompt != "hit" and prompt != "dodge":
-            prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ")
-        if prompt == "hit": 
-            lLegDamage = random.randint(0,5) 
-            lLeg -= lLegDamage * weaponStrength 
-            print("You hit his left leg and it took " + str(lLegDamage * weaponStrength) + " damage!")
-            if bruceHelp > 0:
-                bruceHelpNot = random.randint(1,2)  
-                if bruceHelpNot == 1:
-                    brucelLegDamage = random.randint(1,10)
-                    lLeg -= brucelLegDamage * bruceDamage
-                    print("Bruce hit his left leg and it took " + str(brucelLegDamage * bruceDamage) + " damage!")
-                    bruceHelp -= 1
-                else:
-                    print("Bruce isn't able to attack!")
-            else: 
-                if leaveMessage == False:
-                    print("Bruce decides to leave after assuming that he's helped enough, leaving you to face the dragon alone!")
-                    leaveMessage = True
-            playerDamage = random.randint(0,10)
-            player.currentHealth -= playerDamage 
-            print("Joshro crushed you and you took " + str(playerDamage) + " damage!") 
-        elif prompt == "dodge": 
-            damage = random.randint(0,5) 
-            player.currentHealth -= damage 
-            print("You dodged the attack and took " + str(damage) + " damage!")
-        if player.currentHealth <= 0: 
-            end()
-            return
-    while rArm > 0 and player.currentHealth > 0:
-        print("Joshro's right arm's health: ", rArm) 
-        print("Max's health: ", player.currentHealth)
-        print("Times Bruce will help you:",bruceHelp)
-        prompt = input("'hit' or 'dodge'? ") 
-        while prompt != "hit" and prompt != "dodge":
-            prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ")
-        if prompt == "hit": 
-            rArmDamage = random.randint(0,5)
-            rArm -= rArmDamage * weaponStrength 
-            print("You hit his right arm and it took " + str(rArmDamage * weaponStrength) + " damage!")
-            if bruceHelp > 0:
-                bruceHelpNot = random.randint(1,2)  
-                if bruceHelpNot == 1:
-                    brucerArmDamage = random.randint(1,10)
-                    rArm -= brucerArmDamage * bruceDamage
-                    print("Bruce hit his right arm and it took " + str(brucerArmDamage * bruceDamage) + " damage!")
-                    bruceHelp -= 1
-                else:
-                    print("Bruce isn't able to attack!")
-            else: 
-                if leaveMessage == False:
-                    print("Bruce decides to leave after assuming that he's helped enough, leaving you to face the dragon alone!")
-                    leaveMessage = True
-            playerDamage = random.randint(0,15)
-            player.currentHealth -= playerDamage 
-            print("Joshro slashed you and you took " + str(playerDamage) + " damage!") 
-        elif prompt == "dodge": 
-            damage = random.randint(0,5) 
-            player.currentHealth -= damage 
-            print("You dodged the attack and took " + str(damage) + " damage!")
-        if player.currentHealth <= 0: 
-            end()
-            return
-    while lArm > 0 and player.currentHealth > 0:
-        print("Joshro's left arm's health: ", lArm) 
-        print("Max's health: ", player.currentHealth)
-        print("Times Bruce will help you:",bruceHelp)
-        prompt = input("'hit' or 'dodge'? ") 
-        while prompt != "hit" and prompt != "dodge":
-            prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ")
-        if prompt == "hit": 
-            lArmDamage = random.randint(0,5)
-            lArm -= lArmDamage * weaponStrength 
-            print("You hit his right arm and it took " + str(lArmDamage * weaponStrength) + " damage!")
-            if bruceHelp > 0:
-                bruceHelpNot = random.randint(1,2)  
-                if bruceHelpNot == 1:
-                    brucelArmDamage = random.randint(1,10)
-                    lArm -= brucelArmDamage * bruceDamage
-                    print("Bruce hit his left arm and it took " + str(brucelArmDamage * bruceDamage) + " damage!")
-                    bruceHelp -= 1
-                else:
-                    print("Bruce isn't able to attack!")
-            else: 
-                if leaveMessage == False:
-                    print("Bruce decides to leave after assuming that he's helped enough, leaving you to face the dragon alone!")
-                    leaveMessage = True
-            playerDamage = random.randint(0,20)
-            player.currentHealth -= playerDamage 
-            print("Joshro slammed you and you took " + str(playerDamage) + " damage!") 
-        elif prompt == "dodge": 
-            damage = random.randint(0,5) 
-            player.currentHealth -= damage 
-            print("You dodged the attack and took " + str(damage) + " damage!")
-        if player.currentHealth <= 0: 
-            end()
-            return
-    print("You've weakened Joshro severely, but the fight isn't over yet! You need to attack him directly and land the final blow \n\
-so that Joshro's reign of terror can end once and for all...")
-    time.sleep(currentSettings.sleepTime)
-    while finalBlow > 0 and player.currentHealth > 0:
-        print("Joshro's health: ", finalBlow) 
-        print("Max's health: ", player.currentHealth)
-        print("Times Bruce will help you:",bruceHelp)
-        prompt = input("'hit' or 'dodge'? ") 
-        while prompt != "hit" and prompt != "dodge":
-            prompt = input("That won't work this time! Do you want to 'hit' or 'dodge'? ")
-        if prompt == "hit": 
-            finalBlowDamage = random.randint(0,5)
-            finalBlow -= finalBlowDamage * weaponStrength 
-            print("You hit Joshro and he took " + str(finalBlowDamage * weaponStrength) + " damage!")
-            if bruceHelp > 0:
-                bruceHelpNot = random.randint(1,2)  
-                if bruceHelpNot == 1:
-                    bruceFinalDamage = random.randint(1,10)
-                    finalBlow -= bruceFinalDamage * bruceDamage
-                    print("Bruce hit Joshro and he took " + str(bruceFinalDamage * bruceDamage) + " damage!")
-                    bruceHelp -= 1
-                else:
-                    print("Bruce isn't able to attack!")
-            else: 
-                if leaveMessage == False:
-                    print("Bruce decides to leave after assuming that he's helped enough, leaving you to face the dragon alone!")
-                    leaveMessage = True
-            playerDamage = random.randint(10,20)
             player.currentHealth -= playerDamage 
             print("Joshro set you on fire and you took " + str(playerDamage) + " damage!") 
         elif prompt == "dodge": 
@@ -1519,28 +1349,35 @@ quickClubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 10, 10, 2, 
 bite = Attack([StatusEffect(InflictionType.POISON, 4), StatusEffect(InflictionType.BLEED, 4)], [5, 5], 5, 5, 2, "bite")
 scratch = Attack([StatusEffect(InflictionType.BLEED, 4)], [25], 15, 5, 1, "scratch")
 spare = Attack([], [], 0, 0, 1, "spare")
+growHead = Attack([], [], 0, 0, 2, "grow head")
+fireBreath = Attack([StatusEffect(InflictionType.BURNING, 2)], [100], 0, 0, 3, "fire breath")
+heavyBite = Attack([], [], 50, 0, 4, "heavy bite")
 
 #Globalizing variables
 
 restart = True
 specialFightEnding = False
 specialFightEndingMonsters = []
-global location, player, allIn, weaponChoice, \
+global location, player, joshroHead, allIn, weaponChoice, \
 weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
 currentSettings : Settings
 
 def main():
-    global location, player, allIn, weaponChoice, specialFightEnding, restart, \
+    global location, player, joshroHead, allIn, weaponChoice, specialFightEnding, restart, \
     weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
     restart = False
-    ogre = Enemy(100, [clubBash, punch], "Ogre", 0.0)
-    goblin = Enemy(100, [quickStab, rockThrow], "Goblin", 0.0)
-    slime = Enemy(25, [slimeHug], "Pet Slime", 0.5)
-    troll = Enemy(125, [quickClubBash, splash], "troll", 0.0)
-    mutant = Enemy(300, [punch, heavyPunch], "mutant", 0.25)
-    rat = Enemy(100, [bite, scratch], "Rat", 0.25)
-    babyRat = Enemy(25, [bite, scratch, splash], "Baby Rat", 0.5)
-    guard = Enemy(200, [heavyBlow, quickAttack], "Unloyal Guard", 0.0)
+    # The syntax for enemies is:
+    # Enemy(start health, max health, [attack1, attack2, ...], "name", leech amount 0 to 1 work best)
+    ogre = Enemy(100, 100, [clubBash, punch], "Ogre", 0.0)
+    goblin = Enemy(100, 100, [quickStab, rockThrow], "Goblin", 0.0)
+    slime = Enemy(25, 50, [slimeHug], "Pet Slime", 0.5)
+    troll = Enemy(125, 125, [quickClubBash, splash], "troll", 0.0)
+    mutant = Enemy(1, 300, [punch, heavyPunch], "mutant", 0.25)
+    rat = Enemy(100, 200, [bite, scratch], "Rat", 0.25)
+    babyRat = Enemy(25, 50, [bite, scratch, splash], "Baby Rat", 0.5)
+    guard = Enemy(200, 200, [heavyBlow, quickAttack], "Unloyal Guard", 0.0)
+    joshrosBody = Enemy(300, 300, [growHead], "Joshro's Body", 0.0)
+    joshroHead = Enemy(25, 25, [fireBreath, heavyBite], "Joshro Head", 0.5)
     allIn = False
     player = Player(150)
     potionTroll = False
@@ -1845,7 +1682,7 @@ exclaiming:'LeAvE, RiGhT nOw.' Obviously, you don't move, and the mutant spits o
         print("The mutant shrivels up, and you jump back in horror as the supernatural occurrence unfolds in front of your eyes. \n\
 Death is something you've sort of gotten used to after all of the previous fights you've been in, \n\
 but this definitely takes the cake. You dust yourself off, and resume walking around the town in search of answers.")
-        allIn = True
+        # ADD A NEW ATTACK HERE OR SOMETHING.
     if restart:
         return
     time.sleep(currentSettings.sleepTime)
@@ -2032,57 +1869,61 @@ You drink it, and bask in the glory that is being a nonviolent person before hea
                 stringCorrect = True
             elif askString != "string":
                 print("You didn't guess the word, and sulk about it before heading to the door separating you from the girl you came to save and the tyrannical creature you must defeat...")
-    elif len(emptyStr) < 6:
-        print("You weren't a pacifist! The sorcerer sighs, but because you're mad at the sorcerer for not giving you a chance, you try to attack him. The sorcerer teleports away just in time, and you hit the wall \n\
-with your sword in anger. But before leaving the sorcerer comes back and says that he dislikes you less than Joshro, and that he will give you a fair shot. You are healed back to full;\n\
+    else:
+        print("You weren't a pacifist! The sorcerer sighs, and because you're mad at the sorcerer for not giving you a chance, you try to attack him. The sorcerer teleports away just in time, and you hit the wall \n\
+with your fist in anger. But before leaving the sorcerer comes back and says that he dislikes you far less than Joshro, and that he will give you a fair shot against him. You are healed back to full;\n\
 you then head to the door separating you from Misty and Joshro...")
     player.currentHealth = player.maxHealth
     time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
-    if guardHelpNot != True or guardAlive != True:
-        finalFight()
-        if restart:
-            return
-        trackEndings.append("Do you want to stick with Misty?")
-        endingFour = True
-    else:
-        finalFightGuard()
-        if restart:
-            return
-        trackEndings.append("Do you want to stick with Misty?")
-        endingFour = True
+    if (currentSettings.sleepTime != 0):
+        time.sleep(currentSettings.sleepTime + 2)
+    print("You take one last deep breath before preparing for one last fight.")
+    print("")
+    if (currentSettings.sleepTime != 0):
+        time.sleep(currentSettings.sleepTime + 2)
+    fightSequence([deepcopy(joshrosBody), deepcopy(joshroHead)], False, [[]])
+    if restart:
+        return
+
+    if (player.weapon.attacks == [slimeHug, clubBash, slimeSpike, splash] or player.weapon.attacks == [slimeHug, clubBash, heaviestBlow, splash]) and not guardAlive:
+        print("=]=]=]=]=]=]=]=]=]=]=]=]=]")
+
+    trackEndings.append("Do you want to stick with Misty?")
+    endingFour = True
     time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
-    print(trackEndings)
-    while endingChosen == False:
+    for ending in trackEndings:
+        print (ending)
+    endingChosen = False
+    while not endingChosen:
         chooseEnding = input("What do you do (Type only the lowercase name of the person)? ")
-        if (chooseEnding == "goblin" and endingOne == True) or (chooseEnding == "samantha" and endingTwo == True) or (chooseEnding == "olivia" and endingThree == True) or (chooseEnding == "misty" and endingFour == True):
-            if chooseEnding == "goblin":
-                print(" ")
-                print(endingOneHappens)
-                endingChosen = True
-            elif chooseEnding == "samantha":
-                print(" ")
-                print(endingTwoHappens)
-                endingChosen = True
-            elif chooseEnding == "olivia":
-                print(" ")
-                print(endingThreeHappens)
-                endingChosen = True
-            elif chooseEnding == "misty":
-                print(" ")
-                print(endingFourHappens)
-                endingChosen = True
+        if chooseEnding == "goblin" and endingOne == True:
+            print(" ")
+            print(endingOneHappens)
+            endingChosen = True
+        elif chooseEnding == "samantha" and endingTwo == True:
+            print(" ")
+            print(endingTwoHappens)
+            endingChosen = True
+        elif chooseEnding == "olivia" and endingThree == True :
+            print(" ")
+            print(endingThreeHappens)
+            endingChosen = True
+        elif chooseEnding == "misty" and endingFour == True:
+            print(" ")
+            print(endingFourHappens)
+            endingChosen = True
     time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
     print(" ")
-    specialThanks = input("Would you like to read my special thanks note (it's totally optional:)) \n\
-('yes' or 'no' question)? ")
+    specialThanks = input("Would you like to read the special thanks note (it's totally optional :) ) \n\
+('yes' or 'no')? ")
     while specialThanks != "yes" and specialThanks != "no":
         specialThanks = input("That won't work this time! Do you want to read the note ('yes' or 'no')? ")
     if specialThanks == "yes":
