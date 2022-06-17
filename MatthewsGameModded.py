@@ -1041,7 +1041,7 @@ def swordPull():
         for i in range(5):
             muscle = input("Exert your strength: ")
             userGrunt.append(muscle)
-            print(userGrunt)
+            print(*userGrunt, sep=", ")
             if userGrunt[i] != grunt[i]:
                 userGrunt = []
                 print("You strain your back and have to start over!")
