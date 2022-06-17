@@ -1034,7 +1034,6 @@ safe passage across a path, but brush it off as your mind playing tricks on you 
 
 def swordPull():
     grunt = ["gurr", "rawr", "guh", "rawr", "gurr"]
-    correct = True
     exercise = True
     while exercise:
         userGrunt = []
@@ -1045,21 +1044,23 @@ def swordPull():
             if userGrunt[i] != grunt[i]:
                 userGrunt = []
                 print("You strain your back and have to start over!")
-                gruntCount = 0
                 break
             elif i == 4:
                 exercise = False
     print("Huzzah! The sword finally nudges out of its nested position, and you bask in its strangely magical glory. 'The Python' is \n\
 engraved on the side of the blade, and you deduce that this is the name of the sword.")
     print("Attached to the handle of the blade is a leaflet that reveals why 'The Python' feels so powerful: 'The blade decides \n\
-the enemy's fate, not you'. You take this as a good sign, and place the sword at your side as you get ready for bed. The night is otherwise \n\
-uneventful, and you wake up feeling strangely refreshed after having that small victory the previous night!")
+the enemy's fate, not you'. You take this as a good sign, and place the sword at your side as you get ready for bed.")
     pythonrandWepstrength = random.randint(0,100)
     weaponStrength = pythonrandWepstrength
     if player.weapon.name == "Pet Slime":
+        print("Your Pet Slime then jumps out and eats the sword! Your Pet Slime has learned heaviest blow, it also would like to know be known as Pet Slime, Decider of Fates.")
         player.weapon.LearnAttack(heaviestBlow)
+        player.weapon.name = "Pet Slime Decider of Fates"
     else:
         player.weapon = Weapon([heaviestBlow, quickAttack], "Python", 0.5)
+    print("The night is otherwise \n\
+uneventful, and you wake up feeling strangely refreshed after having that small victory the previous night!")
     return weaponStrength
 
 
@@ -1421,11 +1422,9 @@ at the medieval gym, you fail and fall face first into some *very* sharp thorns"
         caveWatchtower = input("That won't work this time! Do you take shelter in the 'cave' or the 'watchtower'? ")
     if caveWatchtower == "cave":
         potionTroll = cave()
+        print("You leave the cave, and trek on towards the increasingly visible castle.")
     if caveWatchtower == "watchtower": 
         watchTower()
-    if caveWatchtower == "cave":
-        print("You leave the cave, and trek on towards the increasingly visible castle.")
-    elif caveWatchtower == "watchtower":
         print("You exit the watchtower, and trek on towards the increasingly visible castle.")
     time.sleep(currentSettings.sleepTime)
     print(" ")
@@ -1556,7 +1555,7 @@ exclaiming:'LeAvE, RiGhT nOw.' Obviously, you don't move, and the mutant spits o
     if spareKill == "spare":
         brutalEnding = False
         print("You let the mutant go, and it shambles off into the early morning darkness.")
-        print("Then you're " + player.weapon.name + " learns 'spare'.")
+        print("Then your " + player.weapon.name + " learns 'spare'.")
         player.weapon.LearnAttack(spare)
         emptyStr, strings = stringWord(emptyStr)
     elif spareKill == "kill":
@@ -1602,7 +1601,7 @@ past the default 100 value, you might not be able to outrun the rambunctious rod
                 brutalEnding = False
                 print("You decide to spare the " + ratOrRats + ".")
                 if not player.weapon.KnowsAttack("spare"):
-                    print("Then you're " + player.weapon.name + " learns 'spare'.")
+                    print("Then your " + player.weapon.name + " learns 'spare'.")
                     player.weapon.LearnAttack(spare)
         allIn = True
     elif outrunFight == "outrun":
@@ -1650,7 +1649,7 @@ However, it doesn't fully defeat you when it catches up with you, and as such yo
                         brutalEnding = False
                         print("You decide to spare the " + ratOrRats + ".")
                         if not player.weapon.KnowsAttack("spare"):
-                            print("Then you're " + player.weapon.name + " learns 'spare'.")
+                            print("Then your " + player.weapon.name + " learns 'spare'.")
                             player.weapon.LearnAttack(spare)
 
             else:
@@ -1777,7 +1776,7 @@ you then head to the door separating you from Misty and Joshro...")
     if brutalEnding:
         print("After defeating the dragon, you get ready to walk away from it's body,\n\
 but unexpectadly one of the heads bites at you, and even weirder the head then seems combine with your " + player.weapon.name + ".\n\
-Your " + player.weapon.name + " has learned ultra fire breath.")
+Your " + player.weapon.name + " has learned 'ultra fire breath'.")
         player.weapon.LearnAttack(ultraFireBreath)
 
     trackEndings.append("Do you want to stick with Misty?")
