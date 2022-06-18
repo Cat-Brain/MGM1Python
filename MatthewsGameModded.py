@@ -172,7 +172,8 @@ class Attack:
             if random.randint(1, 100) <= self.procChances[i]:
                 inflictions.append(self.procs[i])
 
-        return Hit(max(0, random.randint(self.damage - self.damageRand, self.damage + self.damageRand) - damageReduction), inflictions, currentIndex)
+        unModifiedDamage = max(0, random.randint(self.damage - self.damageRand, self.damage + self.damageRand))
+        return Hit(max(0, unModifiedDamage - damageReduction), inflictions, currentIndex), unModifiedDamage
 
 
 
@@ -219,15 +220,23 @@ class Enemy:
         enemiesBorn = []
 
         if self.CurrentAttack().length <= self.CurrentAttack().timeSinceStart:
-            hit = self.CurrentAttack().RollDamage(currentIndex, self.FindDamageReduction())
+            hit, unModifiedDamage = self.CurrentAttack().RollDamage(0, self.FindDamageReduction())
             if self.CurrentAttack().name == "grow head":
                 enemiesBorn = [deepcopy(joshroHead)]
             elif hit.damage != 0 or hit.inflictions != []:
-                print(self.name + " does " + self.CurrentAttack().name + ". This attack deals " + str(hit.damage) + " damage.")
+                if unModifiedDamage != hit.damage:
+                    print(self.name + " does " + self.CurrentAttack().name + ".\n\
+This attack deals " + str(hit.damage) + " damage. It would've done " + str(unModifiedDamage) + " if it weren't for inflictions.")
+                else:
+                    print(self.name + " does " + self.CurrentAttack().name + ".\n\
+This attack deals " + str(hit.damage) + " damage.")
                 for infliction in hit.inflictions:
                     print("This attack inflicts " + infliction.Name() + " for " + str(infliction.durationLeft) + " turns.")
             else:
-                print(self.name + " misses.")
+                if unModifiedDamage > 0:
+                    print(self.name + " misses, but it would've done " + str(unModifiedDamage) + " if it weren't for inflictions.")
+                else:
+                    print(self.name + " misses.")
 
             self.FindNewAttack()
 
@@ -270,12 +279,21 @@ class Enemy:
                 del self.inflictions[i - destroyedThisFrame]
                 del self.inflictionAttackers[i - destroyedThisFrame]
                 destroyedThisFrame += 1
-
             else:
-                if self.inflictions[i - destroyedThisFrame].durationLeft > 1:
-                    print(self.name + " is inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone in " + str(self.inflictions[i - destroyedThisFrame].durationLeft) + " turns.")
-                else:
-                    print(self.name + " is inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone next turn.")
+                damageThisTurn = ""
+                reductionThisTurn = ""
+                durationThisTurn = "It'll be gone next turn."
+                if damage > 0:
+                    damageThisTurn = "It did " + str(damage) + " damage this turn.\n"
+                reduction = self.inflictions[i - destroyedThisFrame].Reduction()
+                if reduction > 0:
+                    reductionThisTurn = "It will reduce physical attacks by " + str(reduction) + ".\n"
+                elif reduction < 0:
+                    reductionThisTurn = "It will increase physical attacks by " + str(-reduction) + ".\n"
+                duration = self.inflictions[i - destroyedThisFrame].durationLeft
+                if duration > 1:
+                    durationThisTurn = "It'll be gone in " + str(duration) + " turns."
+                print(self.name + " is inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + ".\n" + damageThisTurn +  reductionThisTurn + durationThisTurn)
 
         return orinalInflictionAttackers, damageFromSources, respectiveNames
 
@@ -361,12 +379,14 @@ class Player:
     maxHealth : int # More like Max'S health, am I right!...
     currentHealth : int
     weapon : Weapon
+    currentDeathMessage : str
 
     def __init__(self, maxHealth : int):
         self.inflictions = []
         self.inflictionAttackers = []
         self.maxHealth = maxHealth
         self.currentHealth = maxHealth
+        self.currentDeathMessage = "NULL DEATH MESSAGE"
 
     def FindDamageReduction(self):
         damageReduction = 0
@@ -378,13 +398,21 @@ class Player:
         hit : Hit
 
         if self.weapon.CurrentAttack().length <= self.weapon.CurrentAttack().timeSinceStart:
-            hit = self.weapon.CurrentAttack().RollDamage(0, self.FindDamageReduction())
+            hit, unModifiedDamage = self.weapon.CurrentAttack().RollDamage(0, self.FindDamageReduction())
             if hit.damage != 0 or hit.inflictions != []:
-                print("Max uses their " + self.weapon.name + " and does " + self.weapon.CurrentAttack().name + ". This attack deals " + str(hit.damage) + " damage.")
+                if unModifiedDamage != hit.damage:
+                    print("Max uses their " + self.weapon.name + " and does " + self.weapon.CurrentAttack().name + ".\n\
+This attack deals " + str(hit.damage) + " damage. It would've done " + str(unModifiedDamage) + " if it weren't for inflictions.")
+                else:
+                    print("Max uses their " + self.weapon.name + " and does " + self.weapon.CurrentAttack().name + ".\n\
+This attack deals " + str(hit.damage) + " damage.")
                 for infliction in hit.inflictions:
                     print("This attack inflicts " + infliction.Name() + " for " + str(infliction.durationLeft) + " turns.")
             else:
-                print("Max's " + self.weapon.name + " misses.")
+                if unModifiedDamage > 0:
+                    print("Max's " + self.weapon.name + " misses, but it would've done " + str(unModifiedDamage) + " if it weren't for inflictions.")
+                else:
+                    print("Max's " + self.weapon.name + " misses.")
             
             self.weapon.attacks[self.weapon.activeAttack].timeSinceStart = 0
 
@@ -409,7 +437,7 @@ class Player:
                 halfTimeInfliction = infliction
                 halfTimeInfliction.durationLeft = int(floor(float(halfTimeInfliction.durationLeft) / 2))
                 self.inflictions.append(halfTimeInfliction)
-                print("Because you blocked get stunned for half as long. Which is in this case " + str(halfTimeInfliction.durationLeft))
+                print("Because you blocked get stunned for half as long. Which is in this case " + str(halfTimeInfliction.durationLeft) + " turn.")
         self.inflictionAttackers.extend([hit.attacker] * len(hit.inflictions))
 
     def UpdateInflictions(self):
@@ -435,10 +463,20 @@ class Player:
                 destroyedThisFrame += 1
 
             else:
-                if self.inflictions[i - destroyedThisFrame].durationLeft > 1:
-                    print("You're inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone in " + str(self.inflictions[i - destroyedThisFrame].durationLeft) + " turns.")
-                else:
-                    print("You're inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + " and it did " + str(damage) + " damage this turn. It'll be gone next turn.")
+                damageThisTurn = ""
+                reductionThisTurn = ""
+                durationThisTurn = "It'll be gone next turn."
+                if damage > 0:
+                    damageThisTurn = "It did " + str(damage) + " damage this turn.\n"
+                reduction = self.inflictions[i - destroyedThisFrame].Reduction()
+                if reduction > 0:
+                    reductionThisTurn = "It will reduce physical attacks by " + str(reduction) + ".\n"
+                elif reduction < 0:
+                    reductionThisTurn = "It will increase physical attacks by " + str(-reduction) + ".\n"
+                duration = self.inflictions[i - destroyedThisFrame].durationLeft
+                if duration > 1:
+                    durationThisTurn = "It'll be gone in " + str(duration) + " turns."
+                print("Max is inflicted with " + self.inflictions[i - destroyedThisFrame].Name() + ".\n" + damageThisTurn +  reductionThisTurn + durationThisTurn)
         
         return orinalInflictionAttackers, damageFromSources, respectiveNames
 
@@ -530,8 +568,7 @@ It does high damage, but does all of it's damage upfront but does enough damage 
 def end():
     global restart
     restart = True
-    input("You have been slain.\n\
-Press 'enter' on your keyboard to start a new game. :) ")
+    input("You have been slain.\n" + player.currentDeathMessage + "\nPress 'enter' on your keyboard to start a new game. :)")
 
 
 
@@ -670,10 +707,8 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                     blockedDamage = 0
                     if not enemiesC[i].IsStunned():
                         enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
-                        if len(enemiesBorn) != 0:
-                            enemiesC.extend(enemiesBorn)
-                            for enemy in enemiesBorn:
-                                print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
+                        for enemy in enemiesBorn:
+                            print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
                         unblockedDamage += enemyHit.damage
                         damageDelt = floor(enemyHit.damage / 2)
                         blockedDamage += damageDelt
@@ -943,6 +978,7 @@ sigh of relief as you sit back and watch the werewolves cower in fear from the r
     elif wolfRun == stepsYes:
         print("The fisherman doesn't seem to get the hint, even after the " + str(prod) + " times you told him to hurry up. \
 The werewolves close in swiftly, and you and the fisherman become a hungry family's next meal.")
+        player.currentDeathMessage = "It looks like you may need to work on your talking skills."
         end()
         return 
 
@@ -1288,6 +1324,7 @@ on your journey.")
     print("++++++++++++++++")
     print(" ")
     location = "village"
+    player.currentDeathMessage = "Don't forget that if you dodge an attack that would stun you, you won't get stunned."
     print(introMessages[0])
     fightRun = input("Do you want to 'fight' or 'run' away from the ogre? ")
     while fightRun != "fight" and fightRun != "run":
@@ -1336,6 +1373,7 @@ on your feet and pull out your weapon.")
     print("++++++++++++++++")
     print(" ")
     location = "forest"
+    player.currentDeathMessage = "Don't forget that you can 'change' targets when there's more than 1."
     print(introMessages[1]) 
     fightPersuade = input("Do you want to 'fight' or 'persuade' the goblin? ")
     while fightPersuade != "fight" and fightPersuade != "persuade":
@@ -1392,6 +1430,7 @@ You're able to get up, but because of the surprise attack, you've lost valuable 
 After doing this, your Slime Pet learns a new skill, '" + oldAttack.name + "'.")
                     print("And after seeing this beautiful sight 2 disgusted goblins jump out of the trees to take you on.")
                     location = "forest2"
+                    player.currentDeathMessage = "Your Pet Slime eats you soon after."
                     fightSequence([deepcopy(goblin), deepcopy(goblin)], False, [[]])
                     if restart:
                         return
@@ -1400,6 +1439,7 @@ After doing this, your Slime Pet learns a new skill, '" + oldAttack.name + "'.")
         else:
             print("You try to vault over the bush, but because you skipped leg day \n\
 at the medieval gym, you fail and fall face first into some *very* sharp thorns")
+            player.currentDeathMessage = "Maybe try making some different choices next time."
             end()
             return
     time.sleep(currentSettings.sleepTime)                
@@ -1432,6 +1472,7 @@ at the medieval gym, you fail and fall face first into some *very* sharp thorns"
     print(" ")
     #Troll encounter/fight!!
     location = "old bridge"
+    player.currentDeathMessage = "Don't forget that splash will weaken your attacks by a fixed amount, and it doesn't even effect status effects."
     print(introMessages[4])
     print("'I'm tired of you rude humans criticizing my bridge upkeep skills!:( Gah! All this yelling has got me thirsty, \n\
 would you happen to have anything that could satiate my thirst?")
@@ -1616,6 +1657,7 @@ to attempt to reach a safe distance.")
             if fastNot == 1:
                 print("Despite your determination in trying to outrun the creature, it catches up to you and drags you down to the murky depths... \n\
 and you never resurface.")
+                player.currentDeathMessage = "It feels like you could have made that if only you were luckier or had more health."
                 end()
                 return
             else:
