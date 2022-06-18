@@ -34,7 +34,8 @@ class InflictionType(Enum):
     DEADLY_HUG = 3
     STUN = 4
     WET = 5
-    #Insert more status effects here.
+    STRENGHTEN = 6
+    # Insert more status effects here.
 
 
 
@@ -57,6 +58,8 @@ class Infliction:
             return 0
         elif self.effect == InflictionType.WET:
             return 0
+        elif self.effect == InflictionType.STRENGHTEN:
+            return 0
         else:
             return 0
 
@@ -72,6 +75,8 @@ class Infliction:
         elif self.effect == InflictionType.STUN:
             return 0
         elif self.effect == InflictionType.WET:
+            return 0
+        elif self.effect == InflictionType.STRENGHTEN:
             return 0
         else:
             return 0
@@ -89,6 +94,8 @@ class Infliction:
             return 0
         elif self.effect == InflictionType.WET:
             return 15
+        elif self.effect == InflictionType.STRENGHTEN:
+            return -10
         else:
             return 0
 
@@ -105,6 +112,8 @@ class Infliction:
             return "stun"
         elif self.effect == InflictionType.WET:
             return "wet"
+        elif self.effect == InflictionType.STRENGHTEN:
+            return "strengthen"
         else:
             return "NULL INFLICTION TYPE"
 
@@ -152,16 +161,24 @@ class Attack:
     procChances : int # Percent
     damage : int
     damageRand : int
-    randomness : int
+    selfProcs : StatusEffect
+    selfProcChances : int # Percent
+    selfDamage : int
+    selfDamageRand : int
     length : int
     timeSinceStart : int
     name : str
 
-    def __init__(self, procs : StatusEffect, procChances : int, damage : int, damageRand : int, length : int, name : int):
+    def __init__(self, procs : StatusEffect, procChances : int, damage : int, damageRand : int,\
+        selfProcs : StatusEffect, selfProcChances : int, selfDamage : int, selfDamageRand : int, length : int, name : int):
         self.procs = procs
         self.procChances = procChances
         self.damage = damage
         self.damageRand = damageRand
+        self.selfProcs = selfProcs
+        self.selfProcChances = selfProcChances
+        self.selfDamage = selfDamage
+        self.selfDamageRand = selfDamageRand
         self.length = length
         self.name = name
         self.timeSinceStart = 0
@@ -171,9 +188,15 @@ class Attack:
         for i in range(len(self.procs)):
             if random.randint(1, 100) <= self.procChances[i]:
                 inflictions.append(self.procs[i])
+        selfInflictions = []
+        for i in range(len(self.selfProcs)):
+            if random.randint(1, 100) <= self.selfProcChances[i]:
+                selfInflictions.append(self.selfProcs[i])
 
         unModifiedDamage = max(0, random.randint(self.damage - self.damageRand, self.damage + self.damageRand))
-        return Hit(max(0, unModifiedDamage - damageReduction), inflictions, currentIndex), unModifiedDamage
+        unModifiedSelfDamage = max(0, random.randint(self.selfDamage - self.selfDamageRand, self.selfDamage + self.selfDamageRand))
+        return Hit(max(0, unModifiedDamage - damageReduction), inflictions, currentIndex), unModifiedDamage,\
+            Hit(max(0, unModifiedSelfDamage - damageReduction), selfInflictions, currentIndex), unModifiedSelfDamage
 
 
 
@@ -220,23 +243,38 @@ class Enemy:
         enemiesBorn = []
 
         if self.CurrentAttack().length <= self.CurrentAttack().timeSinceStart:
-            hit, unModifiedDamage = self.CurrentAttack().RollDamage(0, self.FindDamageReduction())
+            hit, unmodifiedDamage, selfHit, unmodifiedSelfDamage = self.CurrentAttack().RollDamage(0, self.FindDamageReduction())
             if self.CurrentAttack().name == "grow head":
                 enemiesBorn = [deepcopy(joshroHead)]
             elif hit.damage != 0 or hit.inflictions != []:
-                if unModifiedDamage != hit.damage:
+                if unmodifiedDamage != hit.damage:
                     print(self.name + " does " + self.CurrentAttack().name + ".\n\
-This attack deals " + str(hit.damage) + " damage. It would've done " + str(unModifiedDamage) + " if it weren't for inflictions.")
+This attack deals " + str(hit.damage) + " damage. It would've done " + str(unmodifiedDamage) + " if it weren't for inflictions.")
                 else:
                     print(self.name + " does " + self.CurrentAttack().name + ".\n\
 This attack deals " + str(hit.damage) + " damage.")
                 for infliction in hit.inflictions:
                     print("This attack inflicts " + infliction.Name() + " for " + str(infliction.durationLeft) + " turns.")
             else:
-                if unModifiedDamage > 0:
-                    print(self.name + " misses, but it would've done " + str(unModifiedDamage) + " if it weren't for inflictions.")
+                if unmodifiedDamage > 0:
+                    print(self.name + " misses, but it would've done " + str(unmodifiedDamage) + " if it weren't for inflictions.")
                 else:
                     print(self.name + " misses.")
+
+            if selfHit.damage != 0 or selfHit.inflictions != []:
+                healOrDeal = "deals " + str(selfHit.damage) + " damage to"
+                if selfHit.damage < 0:
+                    healOrDeal = "heals for " + str(-selfHit.damage) + " health points on"
+
+                if unmodifiedSelfDamage != selfHit.damage:
+                    print(self.name + " does " + self.CurrentAttack().name + ".\n\
+This attack " + healOrDeal + " themselve. It would've done " + str(unmodifiedSelfDamage) + " if it weren't for inflictions.")
+                else:
+                    print(self.name + " does " + self.CurrentAttack().name + ".\n\
+This attack " + healOrDeal + " themselve.")
+                for infliction in selfHit.inflictions:
+                    print("This attack inflicts " + infliction.Name() + " on themselve for " + str(infliction.durationLeft) + " turns.")
+                self.ApplyHit(selfHit)
 
             self.FindNewAttack()
 
@@ -254,8 +292,6 @@ This attack deals " + str(hit.damage) + " damage.")
     def ApplyHit(self, hit : Hit):
         self.health -= hit.damage
         self.inflictions.extend(deepcopy(hit.inflictions))
-        # for i in range(len(hit.inflictions)):
-        #     self.inflictionAttackers.append(deepcopy(hit.attacker))
         self.inflictionAttackers.extend([hit.attacker] * len(hit.inflictions))
 
     def UpdateInflictions(self):
@@ -275,7 +311,10 @@ This attack deals " + str(hit.damage) + " damage.")
             damageFromSources[i] += damage
 
             if self.inflictions[i - destroyedThisFrame].shouldBeDestroyed:
-                print(self.name + "'s " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed but it did " + str(damage) + " damage this turn.")
+                if damage > 0:
+                    print(self.name + "'s " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed but it did " + str(damage) + " damage this turn.")
+                else:
+                    print(self.name + "'s " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed and did no damage this turn.")
                 del self.inflictions[i - destroyedThisFrame]
                 del self.inflictionAttackers[i - destroyedThisFrame]
                 destroyedThisFrame += 1
@@ -398,23 +437,38 @@ class Player:
         hit : Hit
 
         if self.weapon.CurrentAttack().length <= self.weapon.CurrentAttack().timeSinceStart:
-            hit, unModifiedDamage = self.weapon.CurrentAttack().RollDamage(0, self.FindDamageReduction())
+            hit, unmodifiedDamage, selfHit, unmodifiedSelfDamage = self.weapon.CurrentAttack().RollDamage(0, self.FindDamageReduction())
             if hit.damage != 0 or hit.inflictions != []:
-                if unModifiedDamage != hit.damage:
+                if unmodifiedDamage != hit.damage:
                     print("Max uses their " + self.weapon.name + " and does " + self.weapon.CurrentAttack().name + ".\n\
-This attack deals " + str(hit.damage) + " damage. It would've done " + str(unModifiedDamage) + " if it weren't for inflictions.")
+This attack deals " + str(hit.damage) + " damage. It would've done " + str(unmodifiedDamage) + " if it weren't for inflictions.")
                 else:
                     print("Max uses their " + self.weapon.name + " and does " + self.weapon.CurrentAttack().name + ".\n\
 This attack deals " + str(hit.damage) + " damage.")
                 for infliction in hit.inflictions:
                     print("This attack inflicts " + infliction.Name() + " for " + str(infliction.durationLeft) + " turns.")
             else:
-                if unModifiedDamage > 0:
-                    print("Max's " + self.weapon.name + " misses, but it would've done " + str(unModifiedDamage) + " if it weren't for inflictions.")
+                if unmodifiedDamage > 0:
+                    print("Max's " + self.weapon.name + " misses, but it would've done " + str(unmodifiedDamage) + " if it weren't for inflictions.")
                 else:
                     print("Max's " + self.weapon.name + " misses.")
             
             self.weapon.attacks[self.weapon.activeAttack].timeSinceStart = 0
+
+            if selfHit.damage != 0 or selfHit.inflictions != []:
+                healOrDeal = "deals " + str(selfHit.damage) + " damage to"
+                if selfHit.damage < 0:
+                    healOrDeal = "heals for " + str(-selfHit.damage) + " health points on"
+
+                if unmodifiedSelfDamage != selfHit.damage:
+                    print("Max does " + self.CurrentAttack().name + ".\n\
+This attack " + healOrDeal + " themselve. It would've done " + str(unmodifiedSelfDamage) + " if it weren't for inflictions.")
+                else:
+                    print("Max does " + self.CurrentAttack().name + ".\n\
+This attack " + healOrDeal + " themselve.")
+                for infliction in selfHit.inflictions:
+                    print("This attack inflicts " + infliction.Name() + " on themselve for " + str(infliction.durationLeft) + " turns.")
+                self.ApplyHit(selfHit)
 
 
         else:
@@ -457,7 +511,10 @@ This attack deals " + str(hit.damage) + " damage.")
             damageFromSources[i] += damage
 
             if self.inflictions[i - destroyedThisFrame].shouldBeDestroyed:
-                print("Your " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed but it did " + str(damage) + " damage this turn.")
+                if damage > 0:
+                    print("Your " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed but it did " + str(damage) + " damage this turn.")
+                else:
+                    print("Your " + self.inflictions[i - destroyedThisFrame].Name() + " infliction has been destroyed and did no damage this turn.")
                 del self.inflictions[i - destroyedThisFrame]
                 del self.inflictionAttackers[i - destroyedThisFrame]
                 destroyedThisFrame += 1
@@ -1243,30 +1300,30 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 #The syntax for a status effect is:
 #StatusEffect(InflictionType.YOURINFLICTION, how long you want it to last)
 #The syntax for an attacks is:
-#Attack([Status effects], [chance of each status effect happening], damage, damage randomness (how far from the original value the actual value can be), turns to do, name)
-clubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [100], 25, 10, 3, "club bash")
-punch = Attack([], [], 15, 15, 1, "punch")
-heavyPunch = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 25, 25, 2, "heavy punch")
-quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, 1, "quick stab")
-rockThrow = Attack([StatusEffect(InflictionType.STUN, 1)], [25], 5, 5, 1, "rock throw")
-slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, 1, "slime hug")
-slimeSpike = Attack([StatusEffect(InflictionType.BLEED, 3)], [100], 5, 0, 1, "slime spike")
-arrowShoot = Attack([StatusEffect(InflictionType.BURNING, 4)], [100], 35, 10, 3, "shoot arrow")
-arrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, 1, "arrow stab")
-deepCut = Attack([StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15)], [100, 50, 25], 0, 0, 1, "deep cut")
-finisher = Attack([], [], 35, 0, 2, "finisher")
-heavyBlow = Attack([], [], 100, 0, 5, "heavy blow")
-quickAttack = Attack([], [], 35, 0, 2, "quick attack") # Just finisher with a different name LOL.
-heaviestBlow = Attack([], [], 125, 0, 6, "heaviest blow")
-splash = Attack([StatusEffect(InflictionType.WET, 5)], [100], 3, 3, 1, "splash")
-quickClubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 10, 10, 2, "quick club bash")
-bite = Attack([StatusEffect(InflictionType.POISON, 4), StatusEffect(InflictionType.BLEED, 4)], [5, 5], 5, 5, 2, "bite")
-scratch = Attack([StatusEffect(InflictionType.BLEED, 4)], [25], 15, 5, 1, "scratch")
-spare = Attack([], [], 0, 0, 1, "spare")
-growHead = Attack([], [], 0, 0, 2, "grow head")
-fireBreath = Attack([StatusEffect(InflictionType.BURNING, 2)], [100], 0, 0, 3, "fire breath")
-ultraFireBreath = Attack([StatusEffect(InflictionType.BURNING, 3)], [100], 0, 0, 1, "ultra fire breath")
-heavyBite = Attack([], [], 50, 0, 4, "heavy bite")
+#Attack([Status effects], [chance of each status effect happening], damage, damage randomness (how far from the original value the actual value can be), [self inflictions], [self infliction procs], self damage, self damage randomness, turns to do, name)
+clubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [100], 25, 10, [], [], 0, 0, 3, "club bash")
+punch = Attack([], [], 15, 15, [], [], 0, 0, 1, "punch")
+heavyPunch = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 25, 25, [], [], 0, 0, 2, "heavy punch")
+quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, [], [], 0, 0, 1, "quick stab")
+rockThrow = Attack([StatusEffect(InflictionType.STUN, 1)], [25], 5, 5, [], [], 0, 0, 1, "rock throw")
+slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, [], [], 0, 0, 1, "slime hug")
+slimeSpike = Attack([StatusEffect(InflictionType.BLEED, 3)], [100], 5, 0, [], [], 0, 0, 1, "slime spike")
+arrowShoot = Attack([StatusEffect(InflictionType.BURNING, 4)], [100], 35, 10, [], [], 0, 0, 3, "shoot arrow")
+arrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, [], [], 0, 0, 1, "arrow stab")
+deepCut = Attack([StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15)], [100, 50, 25], 0, 0, [], [], 0, 0, 1, "deep cut")
+finisher = Attack([], [], 35, 0, [], [], 0, 0, 2, "finisher")
+heavyBlow = Attack([], [], 100, 0, [], [], 0, 0, 5, "heavy blow")
+quickAttack = Attack([], [], 35, 0, [], [], 0, 0, 2, "quick attack") # Just finisher with a different name LOL.
+heaviestBlow = Attack([], [], 125, 0, [], [], 0, 0, 6, "heaviest blow")
+splash = Attack([StatusEffect(InflictionType.WET, 5)], [100], 3, 3, [], [], 0, 0, 1, "splash")
+quickClubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 10, 10, [], [], 0, 0, 2, "quick club bash")
+bite = Attack([StatusEffect(InflictionType.POISON, 4), StatusEffect(InflictionType.BLEED, 4)], [5, 5], 5, 5, [], [], 0, 0, 2, "bite")
+scratch = Attack([StatusEffect(InflictionType.BLEED, 4)], [25], 15, 5, [], [], 0, 0, 1, "scratch")
+spare = Attack([], [], 0, 0, [], [], 0, 0, 1, "spare")
+growHead = Attack([], [], 0, 0, [], [], 0, 0, 2, "grow head")
+fireBreath = Attack([StatusEffect(InflictionType.BURNING, 2)], [100], 0, 0, [], [], 0, 0, 3, "fire breath")
+ultraFireBreath = Attack([StatusEffect(InflictionType.BURNING, 3)], [100], 0, 0, [], [], 0, 0, 1, "ultra fire breath")
+heavyBite = Attack([], [], 50, 0, [], [], 0, 0, 4, "heavy bite")
 
 #Globalizing variables
 
