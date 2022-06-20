@@ -213,6 +213,7 @@ class Enemy:
     attacks : Attack
     name : str
     leech : float
+    summoned : bool
 
     def __init__(self, health : int, maxHealth : int, attacks : Attack, name : str, leech : float):
         self.inflictions = []
@@ -223,6 +224,7 @@ class Enemy:
         self.attacks = deepcopy(attacks)
         self.name = name
         self.leech = leech
+        self.summoned = False
 
     def CurrentAttack(self):
         return self.attacks[self.activeAttack]
@@ -771,6 +773,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                         enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
                         enemiesC.extend(enemiesBorn)
                         for enemy in enemiesBorn:
+                            enemy.summoned = True
                             print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
                         unblockedDamage += enemyHit.damage
                         damageDelt = floor(enemyHit.damage / 2)
@@ -790,6 +793,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                         enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
                         enemiesC.extend(enemiesBorn)
                         for enemy in enemiesBorn:
+                            enemy.summoned = True
                             print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
                         player.ApplyHit(enemyHit, False)
                         heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
@@ -825,6 +829,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                     enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
                     enemiesC.extend(enemiesBorn)
                     for enemy in enemiesBorn:
+                        enemy.summoned = True
                         print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
                     player.ApplyHit(enemyHit, False)
                     heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
@@ -846,7 +851,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
 
             if not player.IsStunned():
                 if spareable and player.weapon.CurrentAttack().name == "spare":
-                    spareSucceeds = random.randint(0, 5) == 5
+                    spareSucceeds = random.randint(1, 3) == 3
                     if spareSucceeds:
                         print("You attempt to spare and are successful!")
                         specialFightEnding = True
@@ -940,15 +945,26 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                 specialFightEndingMonsters = enemiesC
                 break
 
-        allJoshrosHead = True
+        allSummoned = True
         for enemy in enemiesC:
-            if enemy.name == "Joshro Head":
-                allJoshrosHead = allJoshrosHead and True
+            allSummoned = allSummoned and enemy.summoned
+
+        if allSummoned:
+            printableCombinedEnemyNames = enemiesC[0].name
+            if len(enemiesC) == 2:
+                if enemiesC[0].name == enemiesC[1].name:
+                    printableCombinedEnemyNames += "s"
+                else:
+                    printableCombinedEnemyNames += " and the " + enemiesC[1].name
             else:
-                allJoshrosHead = False
-        if allJoshrosHead:
-            print("All of Joshro's heads fall to the ground.")
+                for i in range(len(enemiesC) - 2):
+                    printableCombinedEnemyNames += ", " + enemiesC[i + 1].name
+                printableCombinedEnemyNames += ", and the" + enemiesC[i + 1].name
+
+            print("The " + printableCombinedEnemyNames + " have chosen to stop fighting.")
             fightOn = False
+            specialFightEnding = True
+            specialFightEndingMonsters = enemiesC
             break
 
 
@@ -1867,9 +1883,14 @@ you then head to the door separating you from Misty and Joshro...")
     print("")
     if (currentSettings.sleepTime != 0):
         time.sleep(currentSettings.sleepTime + 2)
+    
+    
     fightSequence([deepcopy(joshrosBody), deepcopy(joshroHead)], False, [[]])
     if restart:
         return
+
+    if specialFightEnding:
+        print("And all of Joshro's heads fall to the floor.")
 
     if brutalEnding:
         print("After defeating the dragon, you get ready to walk away from it's body,\n\
@@ -1883,12 +1904,13 @@ Your " + player.weapon.name + " has learned 'ultra fire breath'.")
     print(" ")
     print("++++++++++++++++")
     print(" ")
-    for ending in trackEndings:
-        print (ending)
+    print(trackEndings, sep= "\n")
     endingChosen = False
     while not endingChosen:
         chooseEnding = input("What do you do (Type the name of the person)? ").lower()
-        if chooseEnding == "goblin" and endingOne == True:
+        if brutalEnding:
+            print("=]")
+        elif chooseEnding == "goblin" and endingOne == True:
             print(" ")
             print(endingOneHappens)
             endingChosen = True
@@ -1978,7 +2000,7 @@ I just came by to tell you that I heard a rummor that the blacksmith had an 'ogr
         time.sleep(5)
     else:
         print("The fun's not quite over yet friends, just wait for the next major update. =] =] =] =] =]\n\
-- sincerely, Jordan Baumann")
+    - sincerely, Jordan Baumann")
 
     prompt = input("Do you want to play again? ('yes' or 'no')")
     while prompt != "yes" and prompt != "no":
