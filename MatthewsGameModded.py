@@ -170,7 +170,7 @@ class Attack:
     name : str
 
     def __init__(self, procs : StatusEffect, procChances : int, damage : int, damageRand : int,\
-        selfProcs : StatusEffect, selfProcChances : int, selfDamage : int, selfDamageRand : int, length : int, name : int):
+        selfProcs : StatusEffect, selfProcChances : int, selfDamage : int, selfDamageRand : int, summons, length : int, name : int):
         self.procs = procs
         self.procChances = procChances
         self.damage = damage
@@ -179,6 +179,10 @@ class Attack:
         self.selfProcChances = selfProcChances
         self.selfDamage = selfDamage
         self.selfDamageRand = selfDamageRand
+        copyOfSummons = []
+        for summon in summons:
+            copyOfSummons.append(summon)
+        self.summons = copyOfSummons
         self.length = length
         self.name = name
         self.timeSinceStart = 0
@@ -243,10 +247,9 @@ class Enemy:
         enemiesBorn = []
 
         if self.CurrentAttack().length <= self.CurrentAttack().timeSinceStart:
-            hit, unmodifiedDamage, selfHit, unmodifiedSelfDamage = self.CurrentAttack().RollDamage(0, self.FindDamageReduction())
-            if self.CurrentAttack().name == "grow head":
-                enemiesBorn = [deepcopy(joshroHead)]
-            elif hit.damage != 0 or hit.inflictions != []:
+            hit, unmodifiedDamage, selfHit, unmodifiedSelfDamage = self.CurrentAttack().RollDamage(currentIndex, self.FindDamageReduction())
+            enemiesBorn = deepcopy(self.CurrentAttack().summons)
+            if hit.damage != 0 or hit.inflictions != []:
                 if unmodifiedDamage != hit.damage:
                     print(self.name + " does " + self.CurrentAttack().name + ".\n\
 This attack deals " + str(hit.damage) + " damage. It would've done " + str(unmodifiedDamage) + " if it weren't for inflictions.")
@@ -257,9 +260,12 @@ This attack deals " + str(hit.damage) + " damage.")
                     print("This attack inflicts " + infliction.Name() + " for " + str(infliction.durationLeft) + " turns.")
             else:
                 if unmodifiedDamage > 0:
-                    print(self.name + " misses, but it would've done " + str(unmodifiedDamage) + " if it weren't for inflictions.")
-                else:
-                    print(self.name + " misses.")
+                    print(self.name + " does " + self.CurrentAttack().name + ".\n" + \
+self.name + " misses, but it would've done " + str(unmodifiedDamage) + " if it weren't for inflictions.")
+                elif self.CurrentAttack().damage != 0 or self.CurrentAttack().damageRand != 0:
+                    print(self.name + " does " + self.CurrentAttack().name + ".\n" + \
+self.name + " misses.")
+                # else maybe print something.
 
             if selfHit.damage != 0 or selfHit.inflictions != []:
                 healOrDeal = "deals " + str(selfHit.damage) + " damage to"
@@ -722,10 +728,9 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
     global player, specialFightEnding, specialFightEndingMonsters
 
     specialFightEnding = False
-    enemiesC = deepcopy(enemies) # The C in enemiesC stands for copy.
-    cToOriginal = []
-    for i in range(len(enemiesC)):
-        cToOriginal.append(i)
+    enemiesC = [] # The C in enemiesC stands for copy.
+    for enemy in enemies:
+        enemiesC.append(deepcopy(enemy))
     fightOn = True
     fightFrameOne = True
     target = 0
@@ -764,6 +769,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                     blockedDamage = 0
                     if not enemiesC[i].IsStunned():
                         enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
+                        enemiesC.extend(enemiesBorn)
                         for enemy in enemiesBorn:
                             print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
                         unblockedDamage += enemyHit.damage
@@ -772,7 +778,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                         heal = int(floor(float(damageDelt) * enemiesC[i].leech))
                         if heal != 0:
                             print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                            enemiesC[i].health = min(enemiesC.maxHealth * 2, enemiesC[i].health + heal)
+                            enemiesC[i].health = min(enemiesC[i].maxHealth * 2, enemiesC[i].health + heal)
                         player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i), True)
                         print("You dodged the attack and took " + str(blockedDamage) + " damage instead of taking " + str(unblockedDamage) + " damage!")
                     else:
@@ -782,15 +788,14 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                 else:
                     if not enemiesC[i].IsStunned():
                         enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
-                        if len(enemiesBorn) != 0:
-                            enemiesC.extend(enemiesBorn)
-                            for enemy in enemiesBorn:
-                                print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
+                        enemiesC.extend(enemiesBorn)
+                        for enemy in enemiesBorn:
+                            print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
                         player.ApplyHit(enemyHit, False)
                         heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                         if heal != 0:
                             print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
-                            enemiesC[damageDealer[i]].health = min(enemies[min(len(enemies) - 1, cToOriginal[damageDealer[i]])].health * 2, enemiesC[damageDealer[i]].health + heal)
+                            enemiesC[damageDealer[i]].health = min(enemiesC[damageDealer[i]].maxHealth, enemiesC[damageDealer[i]].health + heal)
                         print("Becuase you were stunned you didn't block.\n")
                     else:
                         print(enemiesC[i].name + " did not attack this round as they were stunned.")
@@ -810,7 +815,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                 heal = int(floor(float(inflictionDamageDelt[i]) * enemiesC[damageDealer[i]].leech))
                 if heal != 0:
                     print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of " + respectiveNames[i] + ".")
-                    enemiesC[damageDealer[i]].health = min(enemies[min(len(enemies) - 1, cToOriginal[damageDealer[i]])].health * 2, enemiesC[damageDealer[i]].health + heal)
+                    enemiesC[damageDealer[i]].health = min(enemiesC[damageDealer[i]].maxHealth, enemiesC[damageDealer[i]].health + heal)
 
 
         elif prompt == "attack":
@@ -818,10 +823,9 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
             for i in range(len(enemiesC)):
                 if not enemiesC[i].IsStunned():
                     enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
-                    if len(enemiesBorn) != 0:
-                        enemiesC.extend(enemiesBorn)
-                        for enemy in enemiesBorn:
-                            print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
+                    enemiesC.extend(enemiesBorn)
+                    for enemy in enemiesBorn:
+                        print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
                     player.ApplyHit(enemyHit, False)
                     heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                     if heal != 0:
@@ -862,7 +866,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                 heal = int(floor(float(inflictionDamageDelt[i]) * enemiesC[damageDealer[i]].leech))
                 if heal != 0:
                     print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of " + respectiveNames[i] + ".")
-                    enemiesC[damageDealer[i]].health += heal
+                    enemiesC[damageDealer[i]].health = min(enemiesC[damageDealer[i]].maxHealth, enemiesC[damageDealer[i]].health + heal)
 
 
         elif prompt == "switch":
@@ -1295,62 +1299,65 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 
 #Variables and game:
 
-#Constant variables:
-#Attacks 
-#The syntax for a status effect is:
-#StatusEffect(InflictionType.YOURINFLICTION, how long you want it to last)
-#The syntax for an attacks is:
-#Attack([Status effects], [chance of each status effect happening], damage, damage randomness (how far from the original value the actual value can be), [self inflictions], [self infliction procs], self damage, self damage randomness, turns to do, name)
-clubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [100], 25, 10, [], [], 0, 0, 3, "club bash")
-punch = Attack([], [], 15, 15, [], [], 0, 0, 1, "punch")
-heavyPunch = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 25, 25, [], [], 0, 0, 2, "heavy punch")
-quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, [], [], 0, 0, 1, "quick stab")
-rockThrow = Attack([StatusEffect(InflictionType.STUN, 1)], [25], 5, 5, [], [], 0, 0, 1, "rock throw")
-slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, [], [], 0, 0, 1, "slime hug")
-slimeSpike = Attack([StatusEffect(InflictionType.BLEED, 3)], [100], 5, 0, [], [], 0, 0, 1, "slime spike")
-arrowShoot = Attack([StatusEffect(InflictionType.BURNING, 4)], [100], 35, 10, [], [], 0, 0, 3, "shoot arrow")
-arrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, [], [], 0, 0, 1, "arrow stab")
-deepCut = Attack([StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15)], [100, 50, 25], 0, 0, [], [], 0, 0, 1, "deep cut")
-finisher = Attack([], [], 35, 0, [], [], 0, 0, 2, "finisher")
-heavyBlow = Attack([], [], 100, 0, [], [], 0, 0, 5, "heavy blow")
-quickAttack = Attack([], [], 35, 0, [], [], 0, 0, 2, "quick attack") # Just finisher with a different name LOL.
-heaviestBlow = Attack([], [], 125, 0, [], [], 0, 0, 6, "heaviest blow")
-splash = Attack([StatusEffect(InflictionType.WET, 5)], [100], 3, 3, [], [], 0, 0, 1, "splash")
-quickClubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 10, 10, [], [], 0, 0, 2, "quick club bash")
-bite = Attack([StatusEffect(InflictionType.POISON, 4), StatusEffect(InflictionType.BLEED, 4)], [5, 5], 5, 5, [], [], 0, 0, 2, "bite")
-scratch = Attack([StatusEffect(InflictionType.BLEED, 4)], [25], 15, 5, [], [], 0, 0, 1, "scratch")
-spare = Attack([], [], 0, 0, [], [], 0, 0, 1, "spare")
-growHead = Attack([], [], 0, 0, [], [], 0, 0, 2, "grow head")
-fireBreath = Attack([StatusEffect(InflictionType.BURNING, 2)], [100], 0, 0, [], [], 0, 0, 3, "fire breath")
-ultraFireBreath = Attack([StatusEffect(InflictionType.BURNING, 3)], [100], 0, 0, [], [], 0, 0, 1, "ultra fire breath")
-heavyBite = Attack([], [], 50, 0, [], [], 0, 0, 4, "heavy bite")
-
 #Globalizing variables
 
 restart = True
 specialFightEnding = False
 specialFightEndingMonsters = []
-global location, player, joshroHead, allIn, weaponChoice, \
+global location, player, weaponChoice, \
 weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
 currentSettings : Settings
 
+#Constant variables:
+#Attacks 
+#The syntax for a status effect is:
+#StatusEffect(InflictionType.YOURINFLICTION, how long you want it to last)
+#The syntax for an attacks is:
+#Attack([Status effects], [chance of each status effect happening], damage, damage randomness (how far from the original value the actual value can be), [self inflictions], [self infliction procs], self damage, self damage randomness, [summons], turns to do, name)
+#First up is the attacks that are required to be early.
+fireBreath = Attack([StatusEffect(InflictionType.BURNING, 2)], [100], 0, 0, [], [], 0, 0, [], 3, "fire breath")
+heavyBite = Attack([], [], 50, 0, [], [], 0, 0, [], 4, "heavy bite")
+#Enemies that must be declared early.
+joshroHead = Enemy(25, 50, [fireBreath, heavyBite], "Joshro Head", 0.5)
+#Normal attacks.
+clubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [100], 25, 10, [], [], 0, 0, [], 3, "club bash")
+punch = Attack([], [], 15, 15, [], [], 0, 0, [], 1, "punch")
+heavyPunch = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 25, 25, [], [], 0, 0, [], 2, "heavy punch")
+quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, [], [], 0, 0, [], 1, "quick stab")
+rockThrow = Attack([StatusEffect(InflictionType.STUN, 1)], [25], 5, 5, [], [], 0, 0, [], 1, "rock throw")
+slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, [], [], 0, 0, [], 1, "slime hug")
+slimeSpike = Attack([StatusEffect(InflictionType.BLEED, 3)], [100], 5, 0, [], [], 0, 0, [], 1, "slime spike")
+arrowShoot = Attack([StatusEffect(InflictionType.BURNING, 4)], [100], 35, 10, [], [], 0, 0, [], 3, "shoot arrow")
+arrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, [], [], 0, 0, [], 1, "arrow stab")
+deepCut = Attack([StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15)], [100, 50, 25], 0, 0, [], [], 0, 0, [], 1, "deep cut")
+finisher = Attack([], [], 35, 0, [], [], 0, 0, [], 2, "finisher")
+heavyBlow = Attack([], [], 100, 0, [], [], 0, 0, [], 5, "heavy blow")
+quickAttack = Attack([], [], 35, 0, [], [], 0, 0, [], 2, "quick attack") # Just finisher with a different name LOL.
+heaviestBlow = Attack([], [], 125, 0, [], [], 0, 0, [], 6, "heaviest blow")
+splash = Attack([StatusEffect(InflictionType.WET, 5)], [100], 3, 3, [], [], 0, 0, [], 1, "splash")
+quickClubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 10, 10, [], [], 0, 0, [], 2, "quick club bash")
+bite = Attack([StatusEffect(InflictionType.POISON, 4), StatusEffect(InflictionType.BLEED, 4)], [5, 5], 5, 5, [], [], 0, 0, [], 2, "bite")
+scratch = Attack([StatusEffect(InflictionType.BLEED, 4)], [25], 15, 5, [], [], 0, 0, [], 1, "scratch")
+spare = Attack([], [], 0, 0, [], [], 0, 0, [], 1, "spare")
+growHead = Attack([], [], 0, 0, [], [], 0, 0, [joshroHead], 2, "grow head")
+ultraFireBreath = Attack([StatusEffect(InflictionType.BURNING, 3)], [100], 0, 0, [], [], 0, 0, [], 1, "ultra fire breath")
+
+# The syntax for enemies is:
+# Enemy(start health, max health, [attack1, attack2, ...], "name", leech amount 0 to 1 work best
+joshrosBody = Enemy(300, 300, [growHead], "Joshro's Body", 0.0)
+ogre = Enemy(100, 100, [clubBash, punch], "Ogre", 0.0)
+goblin = Enemy(100, 100, [quickStab, rockThrow], "Goblin", 0.0)
+slime = Enemy(25, 50, [slimeHug], "Pet Slime", 1.0)
+troll = Enemy(125, 125, [quickClubBash, splash], "troll", 0.0)
+mutant = Enemy(200, 200, [punch, heavyPunch], "mutant", 0.0)
+rat = Enemy(100, 200, [bite, scratch], "Rat", 0.25)
+babyRat = Enemy(25, 50, [bite, scratch, splash], "Baby Rat", 0.5)
+guard = Enemy(200, 200, [heavyBlow, quickAttack], "Unloyal Guard", 0.0)
+
 def main():
-    global location, player, joshroHead, allIn, weaponChoice, specialFightEnding, restart, \
+    global location, player, joshroHead, weaponChoice, specialFightEnding, restart, \
     weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
     restart = False
-    # The syntax for enemies is:
-    # Enemy(start health, max health, [attack1, attack2, ...], "name", leech amount 0 to 1 work best)
-    ogre = Enemy(100, 100, [clubBash, punch], "Ogre", 0.0)
-    goblin = Enemy(100, 100, [quickStab, rockThrow], "Goblin", 0.0)
-    slime = Enemy(25, 50, [slimeHug], "Pet Slime", 0.5)
-    troll = Enemy(125, 125, [quickClubBash, splash], "troll", 0.0)
-    mutant = Enemy(300, 300, [punch, heavyPunch], "mutant", 0.25)
-    rat = Enemy(100, 200, [bite, scratch], "Rat", 0.25)
-    babyRat = Enemy(25, 50, [bite, scratch, splash], "Baby Rat", 0.5)
-    guard = Enemy(200, 200, [heavyBlow, quickAttack], "Unloyal Guard", 0.0)
-    joshrosBody = Enemy(200, 200, [growHead], "Joshro's Body", 0.0)
-    joshroHead = Enemy(25, 25, [fireBreath, heavyBite], "Joshro Head", 0.5)
-    allIn = False
     player = Player(150)
     potionTroll = False
     homeChosen = False
@@ -1359,7 +1366,6 @@ def main():
     trackEndings = []
     strings = ["s", "t", "r", "i", "n", "g"]
     emptyStr = ""
-    guardAlive = False
     endingOne = False
     endingTwo = False
     endingThree = False
@@ -1387,10 +1393,9 @@ on your journey.")
     while fightRun != "fight" and fightRun != "run":
         fightRun = input("That won't work this time! Do you want to 'fight' or 'run' away from the ogre? ") 
     if fightRun == "fight": 
-        fightSequence([deepcopy(ogre)], False, [[]])
+        fightSequence([ogre], False, [[]])
         if restart:
             return
-        allIn = True 
     elif fightRun == "run": 
         print("Before you can run, the ogre grabs your shirt and pulls you back, \n\
 and asks in a booming but obviously slurred voice:'Bretton, do you have ma \n\
@@ -1402,7 +1407,7 @@ gold coin yet or not?'")
             fightAvoid = input("That won't work this time! PICK A NUMBER: ")
         if player.weapon.name == "Ogre in a Bottle":
             print("The ogre then ignores what you say and calls you back saying incoherently that you smell suspicious, and you're forced to fight them.")
-            fightSequence([deepcopy(ogre)], False, [[]])
+            fightSequence([ogre], False, [[]])
         elif fightAvoid == "1": 
             print("The ogre seems to like that option, and lets you go as he \n\
 meanders back to the tavern. You regain your composure and continue walking \n\
@@ -1413,10 +1418,9 @@ to the village exit.")
             print("The ogre becomes enraged and slams you on the ground, howling \n\
 like a dog as he searches himself for the dagger he carries. You get back \n\
 on your feet and pull out your weapon.") 
-            fightSequence([deepcopy(ogre)], False, [[]])
+            fightSequence([ogre], False, [[]])
             if restart:
                 return
-            allIn = True
             printOutro()
     time.sleep(currentSettings.sleepTime)        
     print(" ")
@@ -1437,11 +1441,10 @@ on your feet and pull out your weapon.")
         fightPersuade = input("That won't work this time! Do you want to 'fight' or 'persuade' the goblin? ")
     if fightPersuade == "fight":
         print("A Pet Slime also jumps out of the bushes to protect their owner!")
-        fightSequence([deepcopy(goblin), deepcopy(slime)], False, [[]])
+        fightSequence([goblin, slime], False, [[]])
         if restart:
             return
         printOutro()
-        allIn = True 
     elif fightPersuade == "persuade":
         parkour = input("The goblin runs away, and you scramble after it. To catch up to the goblin, you can either 'slide' under a fallen log, or \n\
 'vault' over a thorny bush. What do you do? ")
@@ -1461,7 +1464,7 @@ Oh yeah, and there's some weird slime looking at him.\n\
                 print("The goblin begrudgingly drops your items, but makes you promise that, under oath, you will come \n\
 back after you finish your quest to come work for him to pay off your debt. You gather your pack and continue towards the castle.")
                 emptyStr, strings = stringWord(emptyStr)
-                trackEndings.append("Do you want to repay your debt to the goblin?")
+                trackEndings.append("Do you want to repay your debt to the 'goblin'?")
                 endingOne = True
                 #!!!ENDING ONE!!!
             elif persuade == "2":
@@ -1470,7 +1473,7 @@ You're able to get up, but because of the surprise attack, you've lost valuable 
                 player.maxHealth = int(player.maxHealth / 2)
                 player.currentHealth = int(player.currentHealth / 2)
                 weaponStrength = int(weaponStrength / 2)
-                fightSequence([deepcopy(goblin), deepcopy(slime)], False, [["Pet Slime"]])
+                fightSequence([goblin, slime], False, [["Pet Slime"]])
                 if restart:
                     return
                 printOutro()
@@ -1488,11 +1491,10 @@ After doing this, your Slime Pet learns a new skill, '" + oldAttack.name + "'.")
                     print("And after seeing this beautiful sight 2 disgusted goblins jump out of the trees to take you on.")
                     location = "forest2"
                     player.currentDeathMessage = "Your Pet Slime eats you soon after."
-                    fightSequence([deepcopy(goblin), deepcopy(goblin)], False, [[]])
+                    fightSequence([goblin, goblin], False, [[]])
                     if restart:
                         return
                     printOutro()
-                allIn = True
         else:
             print("You try to vault over the bush, but because you skipped leg day \n\
 at the medieval gym, you fail and fall face first into some *very* sharp thorns")
@@ -1557,7 +1559,7 @@ human, werewolf, goblin, what have you. So, as a token of my apology, I'll offer
 not at all because I get sorta lonely out here and could use another person to talk to... So whaddaya say?' Well, not one to turn down an offer as rare as this, you \n\
 accept the troll's offer, but remind her that you still have a girl to save, and she nods her head understandably. \n\
 You find out the troll's name is Samantha, and wish her well as you finally cross the bridge to continue your quest.")
-                trackEndings.append("Do you want to help keep the bridge clean with Samantha the troll?")
+                trackEndings.append("Do you want to help keep the bridge clean with 'Samantha' the troll?")
                 endingTwo = True
                 #ENDING TWO
             if stayGo == "go":
@@ -1568,11 +1570,10 @@ quietly to continue your journey.")
 you disrespect my bridge, and then you don't even give me something for my dehydration! This won't do! I'm going to have to teach you a lesson in manners!")
             print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
-            fightSequence([deepcopy(troll)], False, [[]])
+            fightSequence([troll], False, [[]])
             if restart:
                 return
             printOutro()
-            allIn = True
             print("P.S., while fighting the troll, the potion broke in your bag, so it's of no use to you now, and you think for a second how much \n\
 better that situation could've turned out if you would've given the troll the potion in the first place, but ah whatever it's just a game, morals don't matter.")
     elif potionTroll == False:
@@ -1581,11 +1582,10 @@ you blank out, and the troll notices this. 'WOW! So first you disrespect my brid
 This won't do! I'm going to have to teach you a lesson in manners!")
         print("Quickly, you ask if there's a riddle you can try to solve in order to avoid a fight, but the troll's mind is already made up, and in fact this seems to \n\
 make her even more angry, which doesn't help things in the slightest. You ready your weapon and prepare to fight the burly creature.")
-        fightSequence([deepcopy(troll)], False, [[]])
+        fightSequence([troll], False, [[]])
         if restart:
             return
         printOutro()
-        allIn = True
     player.weapon.LearnAttack(splash)
     print("Before leaving, you let your " + player.weapon.name + " soak in the water, and it seems to absorb it.\n\
 Your " + player.weapon.name + " has learned 'splash'")
@@ -1623,7 +1623,7 @@ Taking in this information, as well as Olivia's flirting, you realize that you'r
 unwanted attention. The conversation ends, and you go to sleep swiftly.")
         print("Before you leave the house, Olivia rushes to you and gives you a hug, and through stifled sniffles, tells you to stop by her house again after you complete your mission, \n\
 promising you a place to lay low after the dragon is slayed. You accept the offer, and Olivia nods before letting you know that she'll be out of town for a few days to visit her husband's funeral.")
-        trackEndings.append("Do you want to go back to the cottage and live with Olivia?")
+        trackEndings.append("Do you want to go back to the cottage and live with 'Olivia'?")
         endingThree = True
         #ENDING THREE
     elif x == "tavern":
@@ -1643,7 +1643,7 @@ In one of the drawers, you find a damaged note that warns its readers to be wear
     print("After leaving the", x, "in the morning, you turn the corner, but come face to face with a hideously disfigured mutant that shoves you to the ground before \n\
 exclaiming:'LeAvE, RiGhT nOw.' Obviously, you don't move, and the mutant spits on the ground before getting into a battle stance, and as such you do the same.")
     location = "random street"
-    fightSequence([deepcopy(mutant)], False, [[]])
+    fightSequence([mutant], False, [[]])
     if restart:
         return
     printOutro()
@@ -1683,7 +1683,7 @@ past the default 100 value, you might not be able to outrun the rambunctious rod
     while outrunFight != "fight" and outrunFight != "outrun":
         outrunFight = input("That won't work this time! Do you 'fight' or 'outrun' the rat? ")
     if outrunFight == "fight":
-        fightSequence([deepcopy(rat), deepcopy(babyRat), deepcopy(babyRat)], False, [["Baby Rat"], ["Baby Rat", "Baby Rat"]])
+        fightSequence([rat, babyRat, babyRat], False, [["Baby Rat"], ["Baby Rat", "Baby Rat"]])
         if restart:
             return
         if specialFightEnding:
@@ -1694,14 +1694,14 @@ past the default 100 value, you might not be able to outrun the rambunctious rod
             while prompt != "yes" and prompt != "no":
                 prompt = input("That won't work this time. Do you want to chase after them? ('yes' or 'no') ")
             if prompt == "yes":
-                fightSequence(deepcopy(specialFightEndingMonsters), False, [[]])
+                fightSequence(specialFightEndingMonsters, False, [[]])
             else:
                 brutalEnding = False
                 print("You decide to spare the " + ratOrRats + ".")
                 if not player.weapon.KnowsAttack("spare"):
                     print("Then your " + player.weapon.name + " learns 'spare'.")
                     player.weapon.LearnAttack(spare)
-        allIn = True
+        printOutro()
     elif outrunFight == "outrun":
         print("You decide to try your luck and athletic skills by ceasing to fight the rat and instead violently thrash through the water \n\
 to attempt to reach a safe distance.")
@@ -1750,12 +1750,11 @@ However, it doesn't fully defeat you when it catches up with you, and as such yo
                         if not player.weapon.KnowsAttack("spare"):
                             print("Then your " + player.weapon.name + " learns 'spare'.")
                             player.weapon.LearnAttack(spare)
-
+                printOutro()
             else:
                 print("In a surprising turn of events, you manage to wade quickly enough away from the rat that it decides that you're not worth the trouble, \n\
 and waddles away in the other direction. In the process though your knee got cut by a rock.")
                 player.currentHealth -= 25
-    printOutro()
     time.sleep(currentSettings.sleepTime)
     print(" ")
     print("++++++++++++++++")
@@ -1878,7 +1877,7 @@ but unexpectadly one of the heads bites at you, and even weirder the head then s
 Your " + player.weapon.name + " has learned 'ultra fire breath'.")
         player.weapon.LearnAttack(ultraFireBreath)
 
-    trackEndings.append("Do you want to stick with Misty?")
+    trackEndings.append("Do you want to stick with 'Misty'?")
     endingFour = True
     time.sleep(currentSettings.sleepTime)
     print(" ")
@@ -1888,7 +1887,7 @@ Your " + player.weapon.name + " has learned 'ultra fire breath'.")
         print (ending)
     endingChosen = False
     while not endingChosen:
-        chooseEnding = input("What do you do (Type only the lowercase name of the person)? ")
+        chooseEnding = input("What do you do (Type the name of the person)? ").lower()
         if chooseEnding == "goblin" and endingOne == True:
             print(" ")
             print(endingOneHappens)
@@ -1972,17 +1971,19 @@ as well as showing interest in wanting to play my game once it was finished:)")
         print(" ")
         print("Thanks for playing our game! If you're curious about what the '(NUMBER out of 4)' means next to the name of the ending you got, try playing the game again and find out what would happen if you did things differently!:)")
         
-
-        if not brutalEnding:
-            print("Hiya! It's Jordan! I'm the dev behind this 'mod', I just came by to tell you that I heard a rummor that the blacksmith had an 'ogre in a bottle' for sale, hmm, I wonder what that meant...")
-            time.sleep(5)
-        else:
-            print("The fun's not quite over yet friends, just wait for the next major update. =] =] =] =] =]\n\
-    - sincerely, Jordan Baumann")
+    print("\n")
+    if not brutalEnding:
+        print("Hiya! It's Jordan! I'm the dev behind this 'mod',\n\
+I just came by to tell you that I heard a rummor that the blacksmith had an 'ogre in a bottle' for sale, hmm, I wonder what that meant...")
+        time.sleep(5)
+    else:
+        print("The fun's not quite over yet friends, just wait for the next major update. =] =] =] =] =]\n\
+- sincerely, Jordan Baumann")
 
     prompt = input("Do you want to play again? ('yes' or 'no')")
     while prompt != "yes" and prompt != "no":
         prompt = input("'yes' or 'no'")
+    restart = prompt == "yes"
 
 
 
