@@ -181,7 +181,7 @@ class Attack:
         self.selfDamageRand = selfDamageRand
         copyOfSummons = []
         for summon in summons:
-            copyOfSummons.append(summon)
+            copyOfSummons.append(deepcopy(summon))
         self.summons = copyOfSummons
         self.length = length
         self.name = name
@@ -771,10 +771,11 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                     blockedDamage = 0
                     if not enemiesC[i].IsStunned():
                         enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
-                        enemiesC.extend(enemiesBorn)
-                        for enemy in enemiesBorn:
-                            enemy.summoned = True
-                            print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
+                        enemiesBornC = deepcopy(enemiesBorn)
+                        for i in range(len(enemiesBornC)):
+                            enemiesBornC[i].summoned = True
+                            print(enemiesC[i].name + " has birthed a new " + enemiesBornC[i].name + "!")
+                        enemiesC.extend(enemiesBornC)
                         unblockedDamage += enemyHit.damage
                         damageDelt = floor(enemyHit.damage / 2)
                         blockedDamage += damageDelt
@@ -791,10 +792,11 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                 else:
                     if not enemiesC[i].IsStunned():
                         enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
-                        enemiesC.extend(enemiesBorn)
-                        for enemy in enemiesBorn:
-                            enemy.summoned = True
-                            print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
+                        enemiesBornC = deepcopy(enemiesBorn)
+                        for i in range(len(enemiesBornC)):
+                            enemiesBornC[i].summoned = True
+                            print(enemiesC[i].name + " has birthed a new " + enemiesBornC[i].name + "!")
+                        enemiesC.extend(enemiesBornC)
                         player.ApplyHit(enemyHit, False)
                         heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                         if heal != 0:
@@ -827,10 +829,11 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
             for i in range(len(enemiesC)):
                 if not enemiesC[i].IsStunned():
                     enemyHit, enemiesBorn = enemiesC[i].TakeTurn(i)
-                    enemiesC.extend(enemiesBorn)
-                    for enemy in enemiesBorn:
-                        enemy.summoned = True
-                        print(enemiesC[i].name + " has birthed a new " + enemy.name + "!")
+                    enemiesBornC = deepcopy(enemiesBorn)
+                    for i in range(len(enemiesBornC)):
+                        enemiesBornC[i].summoned = True
+                        print(enemiesC[i].name + " has birthed a new " + enemiesBornC[i].name + "!")
+                    enemiesC.extend(enemiesBornC)
                     player.ApplyHit(enemyHit, False)
                     heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                     if heal != 0:
@@ -938,8 +941,12 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                     else:
                         for i in range(len(enemiesC) - 2):
                             printableCombinedEnemyNames += ", " + enemiesC[i + 1].name
-                        printableCombinedEnemyNames += ", and the" + enemiesC[i + 1].name
-                    print("The " + printableCombinedEnemyNames + " have chosen to stop fighting.")
+                        printableCombinedEnemyNames += ", and the" + enemiesC[len(enemiesC) - 1].name
+
+                hasHave = " has"
+                if len(enemiesC) > 1:
+                    hasHave = " have"
+                print("The " + printableCombinedEnemyNames + hasHave + " chosen to stop fighting.")
                 fightOn = False
                 specialFightEnding = True
                 specialFightEndingMonsters = enemiesC
@@ -956,12 +963,15 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                     printableCombinedEnemyNames += "s"
                 else:
                     printableCombinedEnemyNames += " and the " + enemiesC[1].name
-            else:
+            elif len(enemiesC) > 2:
                 for i in range(len(enemiesC) - 2):
                     printableCombinedEnemyNames += ", " + enemiesC[i + 1].name
-                printableCombinedEnemyNames += ", and the" + enemiesC[i + 1].name
+                printableCombinedEnemyNames += ", and the" + enemiesC[len(enemiesC) - 1].name
 
-            print("The " + printableCombinedEnemyNames + " have chosen to stop fighting.")
+            hasHave = " has"
+            if len(enemiesC) > 1:
+                hasHave = " have"
+            print("The " + printableCombinedEnemyNames + hasHave + " chosen to stop fighting.")
             fightOn = False
             specialFightEnding = True
             specialFightEndingMonsters = enemiesC
@@ -1797,12 +1807,10 @@ that the only way to enter the keep is through a direct encounter with the guard
         return
     if specialFightEnding:
         brutalEnding = False
-        guardAlive = True
         print("The guard, whose name you soon find out is Bruce, explains to you that he doesn't even really like Joshro or his ideals, \n\
 but only works for him because the pay is good and he has mouths to feed. This seems like a fair reason to work for a ruthless overlord, so you empathize with him \n\
-and offer to give him the riches found inside Joshro's treasury in exchange for him helping you take on Joshro.")
-        print(" ")
-        print("After some thinking, Bruce declines your offer, and says that he is not the fighter he once was, but because he likes you, he will give you an ancient rejuvination potion. \n\
+and offer to give him the riches found inside Joshro's treasury in exchange for him helping you take on Joshro.\n\n\
+After some thinking, Bruce declines your offer, and says that he is not the fighter he once was, but because he likes you, he will give you an ancient rejuvination potion. \n\
 You nod in agreement, drink the potion, and enter the keep, where the evil Joshro and precious Misty are located... ")
         player.maxHealth += 50
         player.currentHealth = min(player.maxHealth, player.currentHealth + 50)
@@ -1885,7 +1893,7 @@ you then head to the door separating you from Misty and Joshro...")
         time.sleep(currentSettings.sleepTime + 2)
     
     
-    fightSequence([deepcopy(joshrosBody), deepcopy(joshroHead)], False, [[]])
+    fightSequence([joshrosBody], False, [[]])
     if restart:
         return
 
@@ -1904,7 +1912,8 @@ Your " + player.weapon.name + " has learned 'ultra fire breath'.")
     print(" ")
     print("++++++++++++++++")
     print(" ")
-    print(trackEndings, sep= "\n")
+    for ending in trackEndings:
+        print(ending)
     endingChosen = False
     while not endingChosen:
         chooseEnding = input("What do you do (Type the name of the person)? ").lower()
@@ -2002,7 +2011,7 @@ I just came by to tell you that I heard a rummor that the blacksmith had an 'ogr
         print("The fun's not quite over yet friends, just wait for the next major update. =] =] =] =] =]\n\
     - sincerely, Jordan Baumann")
 
-    prompt = input("Do you want to play again? ('yes' or 'no')")
+    prompt = input("Do you want to play again? ('yes' or 'no') ")
     while prompt != "yes" and prompt != "no":
         prompt = input("'yes' or 'no'")
     restart = prompt == "yes"
