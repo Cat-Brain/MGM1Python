@@ -929,24 +929,22 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
             combinedEnemyNames += ", " + enemiesC[i + 1].name
         for option in specialEnding:
             if option == enemyNames:
-                if len(enemiesC) == 1:
-                    print("The " + enemiesC[0].name + " has chosen to stop fighting.")
-                else:
-                    printableCombinedEnemyNames = enemiesC[0].name
-                    if len(enemiesC) == 2:
-                        if enemiesC[0].name == enemiesC[1].name:
-                            printableCombinedEnemyNames += "s"
-                        else:
-                            printableCombinedEnemyNames += " and the " + enemiesC[1].name
+                printableCombinedEnemyNames = enemiesC[0].name
+                if len(enemiesC) == 2:
+                    if enemiesC[0].name == enemiesC[1].name:
+                        printableCombinedEnemyNames += "s"
                     else:
-                        for i in range(len(enemiesC) - 2):
-                            printableCombinedEnemyNames += ", " + enemiesC[i + 1].name
-                        printableCombinedEnemyNames += ", and the" + enemiesC[len(enemiesC) - 1].name
+                        printableCombinedEnemyNames += " and the " + enemiesC[1].name
+                else:
+                    for i in range(len(enemiesC) - 2):
+                        printableCombinedEnemyNames += ", " + enemiesC[i + 1].name
+                    printableCombinedEnemyNames += ", and the" + enemiesC[len(enemiesC) - 1].name
 
                 hasHave = " has"
                 if len(enemiesC) > 1:
                     hasHave = " have"
                 print("The " + printableCombinedEnemyNames + hasHave + " chosen to stop fighting.")
+
                 fightOn = False
                 specialFightEnding = True
                 specialFightEndingMonsters = enemiesC
@@ -1356,9 +1354,9 @@ slimeSpike = Attack([StatusEffect(InflictionType.BLEED, 3)], [100], 5, 0, [], []
 arrowShoot = Attack([StatusEffect(InflictionType.BURNING, 4)], [100], 35, 10, [], [], 0, 0, [], 3, "shoot arrow")
 arrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, [], [], 0, 0, [], 1, "arrow stab")
 deepCut = Attack([StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15)], [100, 50, 25], 0, 0, [], [], 0, 0, [], 1, "deep cut")
-finisher = Attack([], [], 35, 0, [], [], 0, 0, [], 2, "finisher")
+finisher = Attack([], [], 20, 0, [], [], 0, 0, [], 1, "finisher")
 heavyBlow = Attack([], [], 100, 0, [], [], 0, 0, [], 5, "heavy blow")
-quickAttack = Attack([], [], 35, 0, [], [], 0, 0, [], 2, "quick attack") # Just finisher with a different name LOL.
+quickAttack = Attack([], [], 35, 0, [], [], 0, 0, [], 2, "quick attack")
 heaviestBlow = Attack([], [], 125, 0, [], [], 0, 0, [], 6, "heaviest blow")
 splash = Attack([StatusEffect(InflictionType.WET, 5)], [100], 3, 3, [], [], 0, 0, [], 1, "splash")
 quickClubBash = Attack([StatusEffect(InflictionType.STUN, 2)], [75], 10, 10, [], [], 0, 0, [], 2, "quick club bash")
@@ -1423,8 +1421,8 @@ on your journey.")
         if restart:
             return
     elif fightRun == "run": 
-        print("Before you can run, the ogre grabs your shirt and pulls you back, \n\
-and asks in a booming but obviously slurred voice:'Bretton, do you have ma \n\
+        print("Before you can run, the ogre grabs your shirt and pulls you back, \
+and asks in a booming but obviously slurred voice:'Bretton, do you have ma \
 gold coin yet or not?'") 
         fightAvoid = input("'1'. Lie and say its back at the inn and you'll get it as soon as he lets you go.\n\
 '2'. Tell him to let you go or else he'll have to worry about more than just a stupid gold coin. \n\
@@ -1460,7 +1458,7 @@ on your feet and pull out your weapon.")
     print("++++++++++++++++")
     print(" ")
     location = "forest"
-    player.currentDeathMessage = "Don't forget that you can 'change' targets when there's more than 1."
+    player.currentDeathMessage = "Don't forget that you can 'change' targets when there's more than 1 foe."
     print(introMessages[1]) 
     fightPersuade = input("Do you want to 'fight' or 'persuade' the goblin? ")
     while fightPersuade != "fight" and fightPersuade != "persuade":
@@ -1657,7 +1655,7 @@ promising you a place to lay low after the dragon is slayed. You accept the offe
 You get settled in for the night, eating some food that you bought earlier from the bartender and just thinking about everything that's happened recently. \n\
 In one of the drawers, you find a damaged note that warns its readers to be weary of Joshro's henchmen. You dismiss this, and get in bed before falling asleep easily.")
     elif x == "inn":
-        print("Once inside the inn, you eat a hearty meal in the lobby before purchasing a room. As you walk past the many rooms, an old and disheveled man grabs you and warns you to stay weary of the \n\
+        print("Once inside the inn, you eat a hearty meal in the lobby before purchasing a room. As you walk past the many rooms, an old and disheveled man grabs you and warns you to stay weary of the \
 'Dragon's Devils'. You push the man off you and hurry to your room. The man's words still linger in your mind, but you shut them off and go to sleep begrudgingly.")
     
     player.currentHealth = player.maxHealth
@@ -1669,6 +1667,7 @@ In one of the drawers, you find a damaged note that warns its readers to be wear
     print("After leaving the", x, "in the morning, you turn the corner, but come face to face with a hideously disfigured mutant that shoves you to the ground before \n\
 exclaiming:'LeAvE, RiGhT nOw.' Obviously, you don't move, and the mutant spits on the ground before getting into a battle stance, and as such you do the same.")
     location = "random street"
+    player.currentDeathMessage = "The mutants heavy punch can stun you if you're not careful, it can be best to dodge it."
     fightSequence([mutant], False, [[]])
     if restart:
         return
@@ -1701,6 +1700,7 @@ but this definitely takes the cake. You dust yourself off, and resume walking ar
     print(" ")
     location = "sewers"
     print(introMessages[6])
+    player.currentDeathMessage = "Maybe you should try to come here with more health, or try to outrun them."
     print("Before beginning your attack on the rat, you remember that you used to take \n\
 medieval track and field at your former academy, and ponder over whether or not you should see if your skills are still in tip-top shape. \n\
 The little voice in your head warns you, though, that if your health has not been increased \n\
@@ -1802,6 +1802,7 @@ appearance, and, in addition to that, offers more protection.")
     player.maxHealth += 50
     print("Approaching the keep, you see a human guard ahead that won't move no matter what distractions you use to guide him away. After some impatient waiting, you conclude \n\
 that the only way to enter the keep is through a direct encounter with the guard. A fight is inevitable, but the only question now is *how* the interaction with the guard will end...")
+    player.currentDeathMessage = "It seems like he doesn't want to fight... maybe there's a way to convince him to stop."
     fightSequence([guard], True, [[]])
     if restart:
         return
@@ -1876,10 +1877,12 @@ You drink it, and bask in the glory that is being a nonviolent person before hea
                 stringCorrect = True
             elif askString != "string":
                 print("You didn't guess the word, and sulk about it before heading to the door separating you from the girl you came to save and the tyrannical creature you must defeat...")
-    else:
+    elif not brutalEnding:
         print("You weren't a pacifist! The sorcerer sighs, and because you're mad at the sorcerer for not giving you a chance, you try to attack him. The sorcerer teleports away just in time, and you hit the wall \n\
 with your fist in anger. But before leaving the sorcerer comes back and says that he dislikes you far less than Joshro, and that he will give you a fair shot against him. You are healed back to full;\n\
 you then head to the door separating you from Misty and Joshro...")
+    else:
+        print("The sorcerer spits at your feet and teleports away, and you confusedly walk onwards to the door containing Joshro.")
     player.currentHealth = player.maxHealth
     time.sleep(currentSettings.sleepTime)
     print(" ")
@@ -1892,7 +1895,7 @@ you then head to the door separating you from Misty and Joshro...")
     if (currentSettings.sleepTime != 0):
         time.sleep(currentSettings.sleepTime + 2)
     
-    
+    player.currentDeathMessage = "You were so close, just keep trying!"
     fightSequence([joshrosBody], False, [[]])
     if restart:
         return
@@ -1919,6 +1922,7 @@ Your " + player.weapon.name + " has learned 'ultra fire breath'.")
         chooseEnding = input("What do you do (Type the name of the person)? ").lower()
         if brutalEnding:
             print("=]")
+            endingChosen
         elif chooseEnding == "goblin" and endingOne == True:
             print(" ")
             print(endingOneHappens)
@@ -2004,12 +2008,20 @@ as well as showing interest in wanting to play my game once it was finished:)")
         
     print("\n")
     if not brutalEnding:
-        print("Hiya! It's Jordan! I'm the dev behind this 'mod',\n\
+        oneOrTwo = random.randint(1, 2)
+        if oneOrTwo == 1 and not player.weapon.KnowsAttack("club bash"):
+            print("Hiya! It's Jordan! I'm the dev behind this 'mod',\n\
 I just came by to tell you that I heard a rummor that the blacksmith had an 'ogre in a bottle' for sale, hmm, I wonder what that meant...")
+        elif not player.weapon.KnowsAttack("slime hug"):
+            print("Hiya! It's Jordan! I'm the dev behind this 'mod',\n\
+I just came by to tell you that I heard a rummor that the Pet Slime may not be as loyal as you'd thing, hmm, I wonder what that meant...")
+        else:
+            print("Hiya! It's Jordan! I'm the dev behind this 'mod',\n\
+I just came by to tell you that I heard a rumor that some sorcerer can get far more mad then he normally does... hmm... I wonder what that meant...")
         time.sleep(5)
     else:
-        print("The fun's not quite over yet friends, just wait for the next major update. =] =] =] =] =]\n\
-    - sincerely, Jordan Baumann")
+        print("The fun's not quite over yet friends, just wait... =] =] =] =] =]\n\
+    - sincerely, Jordan")
 
     prompt = input("Do you want to play again? ('yes' or 'no') ")
     while prompt != "yes" and prompt != "no":
