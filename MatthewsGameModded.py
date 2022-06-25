@@ -602,29 +602,30 @@ def FindSettings():
 
 
 def weaponSelect(): 
-    global player, weaponChoice, weaponStrength
+    global player
+
+    weaponChoice = input("Do you take a 'bow', 'axe', or 'sword'?: ")
+    while weaponChoice != "bow" and weaponChoice != "axe" and weaponChoice != "sword" and weaponChoice != "ogre in a bottle":
+        weaponChoice = input("That weapon isn't here! Do you take a 'bow', 'axe', or 'sword'?: ")
 
     if weaponChoice == "bow": 
-        player.weapon = Weapon([arrowShoot, arrowStab], "Bow", 0.0)
-        weaponStrength = 6
+        player.weapon = Weapon([arrowShoot, chokeHold], "Bow", 0.0)
         print("A standard bow.\n\
-It's a slow weapon that stays inside of enemies and damages them over time.")
+It's a slow weapon that stays inside of enemies and damages them over time.\n\
+Good if you want to forget about some foes, but bad at finishing things within a timely manor.")
 
 
     elif weaponChoice == "axe":
         player.weapon = Weapon([deepCut, finisher], "Axe", 0.0)
-        weaponStrength = 8
         print("A pair of small battle axes.\n\
-They're quick weapons that do damage over time, and accumulate their\
-     damage instead of giving it to you upfront, good at single target and very small, but bad against leech.") 
+They're quick weapons that do damage over time, and accumulate their damage instead of giving it to you upfront\n\
+good at single target and very small targets, but bad against leech and quick fights.") 
     elif weaponChoice == "sword":
         player.weapon = Weapon([heavyBlow, quickAttack], "Sword", 0.0)
-        weaponStrength = 10 
         print("A steel longsword.\n\
-It does high damage, but does all of it's damage upfront but does enough damage to one shot most foes, good at big foes, but bad at small ones.")
+It does high damage, but does all of it's damage upfront but does enough damage to one shot most foes, good at big foes, but bad at small ones and long fights.")
     elif weaponChoice == "ogre in a bottle":
         player.weapon = Weapon([clubBash, punch], "Ogre in a Bottle", 0.5)
-        weaponStrength = 1000
         print("BONK")
 
 
@@ -697,10 +698,10 @@ to the local sewer entrance to search for the secret entrance to the fortress wh
 def randomNumtosolve(number):
     playerNum = 0
     while playerNum < number:
-        print("V NUMBER TO REACH V")
         print(number)
-        print("V YOUR CURRENT TOTAL V")
+        print("^ NUMBER TO REACH ^")
         print(playerNum)
+        print("^ YOUR CURRENT TOTAL ^")
         inputString = input("Choose a number that is less than 1/4 \n\
 of what the number is, and try to add up to the sum of it (keep in mind you'll have to add more numbers to this one): ")
         if inputString.isnumeric():    
@@ -710,10 +711,10 @@ of what the number is, and try to add up to the sum of it (keep in mind you'll h
         while numberGiven >= number/4:
             numberGiven = int(input("That won't work this time! Choose a number that is less than 1/4 \n\
 of what the number is, and try to add up to the sum of it (keep in mind you'll have to add more numbers to this one): "))
-            print("V NUMBER TO REACH V")
             print(number)
-            print("V YOUR CURRENT TOTAL V")
+            print("^ NUMBER TO REACH ^")
             print(playerNum)
+            print("^ YOUR CURRENT TOTAL ^")
         playerNum += numberGiven
         if playerNum > number:
             print("You went over the number, and have to start over!")
@@ -1154,6 +1155,7 @@ safe passage across a path, but brush it off as your mind playing tricks on you 
 
 
 def swordPull():
+    global player
     grunt = ["gurr", "rawr", "guh", "rawr", "gurr"]
     exercise = True
     while exercise:
@@ -1165,6 +1167,7 @@ def swordPull():
             if userGrunt[i] != grunt[i]:
                 userGrunt = []
                 print("You strain your back and have to start over!")
+                player.currentHealth = max(0, player.currentHealth - 25)
                 break
             elif i == 4:
                 exercise = False
@@ -1172,8 +1175,6 @@ def swordPull():
 engraved on the side of the blade, and you deduce that this is the name of the sword.")
     print("Attached to the handle of the blade is a leaflet that reveals why 'The Python' feels so powerful: 'The blade decides \n\
 the enemy's fate, not you'. You take this as a good sign, and place the sword at your side as you get ready for bed.")
-    pythonrandWepstrength = random.randint(0,100)
-    weaponStrength = pythonrandWepstrength
     if player.weapon.name == "Pet Slime":
         print("Your Pet Slime then jumps out and eats the sword! Your Pet Slime has learned heaviest blow, it also would like to know be known as Pet Slime, Decider of Fates.")
         player.weapon.LearnAttack(heaviestBlow)
@@ -1182,7 +1183,6 @@ the enemy's fate, not you'. You take this as a good sign, and place the sword at
         player.weapon = Weapon([heaviestBlow, quickAttack], "Python", 0.5)
     print("The night is otherwise \n\
 uneventful, and you wake up feeling strangely refreshed after having that small victory the previous night!")
-    return weaponStrength
 
 
 
@@ -1208,12 +1208,9 @@ and go to sleep restlessly on the cold hard floor.")
 
 
 def home():
-    global homeChosen
-    if homeChosen == False:
-        tavernInncottage = input("Do you make the 'tavern', 'cottage', or 'inn' your new home? ")
-        while tavernInncottage != "tavern" and tavernInncottage != "cottage" and tavernInncottage != "inn":
-            tavernInncottage = input("That won't work this time! Do you make the 'tavern', 'cottage', or 'inn' your new home? ")
-    homeChosen = True
+    tavernInncottage = input("Do you make the 'tavern', 'cottage', or 'inn' your new home? ")
+    while tavernInncottage != "tavern" and tavernInncottage != "cottage" and tavernInncottage != "inn":
+        tavernInncottage = input("That won't work this time! Do you make the 'tavern', 'cottage', or 'inn' your new home? ")
     return tavernInncottage
 
 
@@ -1328,8 +1325,8 @@ YOU GOT THE 'From rags to royalty' ENDING (4 out of 4)"
 restart = True
 specialFightEnding = False
 specialFightEndingMonsters = []
-global location, player, weaponChoice, \
-weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
+global location, player, \
+potionTroll, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
 currentSettings : Settings
 
 #Constant variables:
@@ -1351,8 +1348,8 @@ quickStab = Attack([StatusEffect(InflictionType.POISON, 3)], [50], 5, 5, [], [],
 rockThrow = Attack([StatusEffect(InflictionType.STUN, 1)], [25], 5, 5, [], [], 0, 0, [], 1, "rock throw")
 slimeHug = Attack([StatusEffect(InflictionType.DEADLY_HUG, 3)], [100], 0, 0, [], [], 0, 0, [], 1, "slime hug")
 slimeSpike = Attack([StatusEffect(InflictionType.BLEED, 3)], [100], 5, 0, [], [], 0, 0, [], 1, "slime spike")
-arrowShoot = Attack([StatusEffect(InflictionType.BURNING, 4)], [100], 35, 10, [], [], 0, 0, [], 3, "shoot arrow")
-arrowStab = Attack([StatusEffect(InflictionType.POISON, 2)], [100], 5, 5, [], [], 0, 0, [], 1, "arrow stab")
+arrowShoot = Attack([StatusEffect(InflictionType.BURNING, 3), StatusEffect(InflictionType.POISON, 8)], [100, 100], 35, 10, [], [], 0, 0, [], 3, "shoot arrow")
+chokeHold = Attack([StatusEffect(InflictionType.STUN, 1)], [75], 5, 5, [], [], 0, 0, [], 1, "choke hold")
 deepCut = Attack([StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15), StatusEffect(InflictionType.BLEED, 15)], [100, 50, 25], 0, 0, [], [], 0, 0, [], 1, "deep cut")
 finisher = Attack([], [], 20, 0, [], [], 0, 0, [], 1, "finisher")
 heavyBlow = Attack([], [], 100, 0, [], [], 0, 0, [], 5, "heavy blow")
@@ -1379,13 +1376,12 @@ babyRat = Enemy(25, 50, [bite, scratch, splash], "Baby Rat", 0.5)
 guard = Enemy(200, 200, [heavyBlow, quickAttack], "Unloyal Guard", 0.0)
 
 def main():
-    global location, player, joshroHead, weaponChoice, specialFightEnding, restart, \
-    weaponStrength, potionTroll, homeChosen, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
+    global location, player, joshroHead, specialFightEnding, restart, \
+    potionTroll, divByfour, morality, trackEndings, strings, emptyStr, currentSettings
     restart = False
     player = Player(150)
     potionTroll = False
-    homeChosen = False
-    divByfour = [8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]
+    divByfour = [12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]
     morality = 0
     trackEndings = []
     strings = ["s", "t", "r", "i", "n", "g"]
@@ -1402,9 +1398,6 @@ beautiful princess Misty from the evil dragon Joshro. Your story begins at the v
 blacksmith, where you must decide what kind of weapon you will bring with you \n\
 on your journey.")
     time.sleep(currentSettings.sleepTime)
-    weaponChoice = input("Do you take a 'bow', 'axe', or 'sword'?: ")
-    while weaponChoice != "bow" and weaponChoice != "axe" and weaponChoice != "sword" and weaponChoice != "ogre in a bottle":
-        weaponChoice = input("That weapon isn't here! Do you take a 'bow', 'axe', or 'sword'?: ")
     weaponSelect()
     time.sleep(currentSettings.sleepTime)
     print(" ")
@@ -1495,15 +1488,13 @@ back after you finish your quest to come work for him to pay off your debt. You 
                 print("The goblin becomes furious after you pet HIS pet slime, and swiftly slashes you with his claws. \n\
 You're able to get up, but because of the surprise attack, you've lost valuable health.")
                 player.maxHealth = int(player.maxHealth / 2)
-                player.currentHealth = int(player.currentHealth / 2)
-                weaponStrength = int(weaponStrength / 2)
+                player.currentHealth = int(player.currentHealth / 2 + 0.5)
                 fightSequence([goblin, slime], False, [["Pet Slime"]])
                 if restart:
                     return
                 printOutro()
-                player.maxHealth = int(player.maxHealth * 2)
-                player.currentHealth = player.maxHealth
-                weaponStrength = int(weaponStrength * 2)
+                player.maxHealth = player.maxHealth * 2
+                player.currentHealth = player.currentHealth * 2
                 if (specialFightEnding):
                     specialFightEnding = False
                     print("Oddly enough, you have now seemingly befriended the pet slime. The Pet Slime has replaced your weapon.")
