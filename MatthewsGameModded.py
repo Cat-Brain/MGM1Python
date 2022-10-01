@@ -634,7 +634,7 @@ It does high damage, but does all of it's damage upfront but does enough damage 
 def end():
     global restart
     restart = True
-    input("You have been slain.\n" + player.currentDeathMessage + "\nPress 'enter' on your keyboard to start a new game. :)")
+    input("You have been slain.\n" + player.currentDeathMessage + "\nPress the enter key on your keyboard to start a new game. :) ")
 
 
 
@@ -782,7 +782,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                         blockedDamage += damageDelt
                         heal = int(floor(float(damageDelt) * enemiesC[i].leech))
                         if heal != 0:
-                            print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
+                            print(enemiesC[i].name + " heals off of you for " + str(heal) + ".")
                             enemiesC[i].health = min(enemiesC[i].maxHealth * 2, enemiesC[i].health + heal)
                         player.ApplyHit(Hit(damageDelt, enemyHit.inflictions, i), True)
                         print("You dodged the attack and took " + str(blockedDamage) + " damage instead of taking " + str(unblockedDamage) + " damage!")
@@ -801,7 +801,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                         player.ApplyHit(enemyHit, False)
                         heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                         if heal != 0:
-                            print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
+                            print(enemiesC[i].name + " heals off of you for " + str(heal) + ".")
                             enemiesC[damageDealer[i]].health = min(enemiesC[damageDealer[i]].maxHealth, enemiesC[damageDealer[i]].health + heal)
                         print("Becuase you were stunned you didn't block.\n")
                     else:
@@ -821,7 +821,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
             for i in range(len(damageDealer)):
                 heal = int(floor(float(inflictionDamageDelt[i]) * enemiesC[damageDealer[i]].leech))
                 if heal != 0:
-                    print(enemiesC[damageDealer[i]].name + " heal's off of you for " + str(heal) + " because of " + respectiveNames[i] + ".")
+                    print(enemiesC[damageDealer[i]].name + " heals off of you for " + str(heal) + " because of " + respectiveNames[i] + ".")
                     enemiesC[damageDealer[i]].health = min(enemiesC[damageDealer[i]].maxHealth, enemiesC[damageDealer[i]].health + heal)
 
 
@@ -838,7 +838,7 @@ def fightSequence(enemies : Enemy, spareable : bool, specialEnding : str):
                     player.ApplyHit(enemyHit, False)
                     heal = int(floor(float(enemyHit.damage) * enemiesC[i].leech))
                     if heal != 0:
-                        print(enemiesC[i].name + " heal's off of you for " + str(heal) + ".")
+                        print(enemiesC[i].name + " heals off of you for " + str(heal) + ".")
                         enemiesC[i].health = min(enemiesC[i].maxHealth, enemiesC[i].health + heal)
                 else:
                     print(enemiesC[i].name + " did not attack this round as they were stunned.")
@@ -1176,7 +1176,7 @@ engraved on the side of the blade, and you deduce that this is the name of the s
     print("Attached to the handle of the blade is a leaflet that reveals why 'The Python' feels so powerful: 'The blade decides \n\
 the enemy's fate, not you'. You take this as a good sign, and place the sword at your side as you get ready for bed.")
     if player.weapon.name == "Pet Slime":
-        print("Your Pet Slime then jumps out and eats the sword! Your Pet Slime has learned heaviest blow, it also would like to know be known as Pet Slime, Decider of Fates.")
+        print("Your Pet Slime then jumps out and eats the sword! Your Pet Slime has learned heaviest blow, it also would like to now be known as Pet Slime, Decider of Fates.")
         player.weapon.LearnAttack(heaviestBlow)
         player.weapon.name = "Pet Slime Decider of Fates"
     else:
@@ -1909,11 +1909,12 @@ Your " + player.weapon.name + " has learned 'ultra fire breath'.")
     for ending in trackEndings:
         print(ending)
     endingChosen = False
-    while not endingChosen:
+    confusionCount = 0
+    while not endingChosen and confusionCount < 10:
         chooseEnding = input("What do you do (Type the name of the person)? ").lower()
         if brutalEnding:
             print("=]")
-            endingChosen
+            confusionCount += 1
         elif chooseEnding == "goblin" and endingOne == True:
             print(" ")
             print(endingOneHappens)
@@ -1934,69 +1935,99 @@ Your " + player.weapon.name + " has learned 'ultra fire breath'.")
     print(" ")
     print("++++++++++++++++")
     print(" ")
-    specialThanks = input("Would you like to read the special thanks note (it's totally optional :) ) \n\
-('yes' or 'no')? ")
+    specialThanksText = "Would you like to read the special thanks note (it's totally optional :) ) \n\
+('yes' or 'no')? "
+    if brutalEnding:
+        specialThanksText = "Would you like to read the special special thanks note =] 'yes or 'no' "
+    specialThanks = input(specialThanksText)
     while specialThanks != "yes" and specialThanks != "no":
         specialThanks = input("That won't work this time! Do you want to read the note ('yes' or 'no')? ")
-    if specialThanks == "yes":
-        print("This game took me(Matthew) a little bit under 2 months to make, and it was definitely a rollercoaster \n\
-of hating programming and loving it, but I'd just like to say a couple quick things about some of the people who helped/supported me through \n\
-the development process... ") 
-        time.sleep(currentSettings.sleepTime)
-        print(" ")
-        print("The first person I'd like to thank is God for allowing me to be here and have the experience to be able to make such a cool game, as well as allowing me to meet wonderful people \n\
-like Jasun, Jordan(That's me, the other dev!), Corbin, and other people I'd consider friends:)")
-        time.sleep(currentSettings.sleepTime)
-        print(" ")
-        print("The next person is, of course, Jasun, for two very good reasons. First and foremost, without Jasun pushing me to constantly upgrade and continue learning Python as well as \n\
-making the game itself, this game would've never been completed. Him helping me get through tricky lines of code is the second reason, as many of the things you experience throughout the game, \n\
-such as the pig latin challenge and the normal fight scenes, wouldn't have functioned properly or at all without his advice. All in all, I'd like to thank Jasun for allowing me to do a project that I \n\
-genuinely enjoyed working on (for most of the time at least), as well as helping me explore programming in general, as it is something I definitely want to pursue as a future career.")
-        time.sleep(currentSettings.sleepTime)
-        print(" ")
-        print("For the next person, I'm actually going to thank two people- those two people being Jordan and Corbin. When Jasun was busy helping other people out or was stumped about something \n\
-concerning my code, Jordan and Corbin, without hesitation, always came to my aid to help me solve whatever issue was plagueing my code. Without them and their \n\
-Albert Einstein-like brains, a substantial portion of this game would not be possible:)")
-        time.sleep(currentSettings.sleepTime)
-        print(" ")
-        print("Ok because there are a bunch of other people on my list that deserve paragraphs of their own, but also because I don't want this game to be like a million lines of code, I'm going to sum up the other people very quickly:")
-        time.sleep(currentSettings.sleepTime)
-        print("MICHELLE, for being supportive of my interest in coding even through tough times:)")
-        time.sleep(currentSettings.sleepTime)
-        print("~~~~~~~~~~~~~~~~")
-        print("LUKE, for showing a genuine interest in seeing my game be completed and even asking questions regarding the nerdy mechanics of what certain stuff did inside the code:)")
-        time.sleep(currentSettings.sleepTime)
-        print("~~~~~~~~~~~~~~~~")
-        print("VICTORY, for being the person I could have a good laugh with when programming annoyed me and I needed a break:)")
-        time.sleep(currentSettings.sleepTime)
-        print("~~~~~~~~~~~~~~~~")
-        print("DANNY, for being interested in playing my game once it was finished, as well as making ultimate frisbee be super fun and rewarding after doing a bunch of typing the Wednesday before in STEAM Club:)")
-        time.sleep(currentSettings.sleepTime)
-        print("~~~~~~~~~~~~~~~~")
-        print("DOUG, CAITLIN, BENNY, and JEFF, for letting me leave their classes early so I could work on my game:)")
-        time.sleep(currentSettings.sleepTime)
-        print("~~~~~~~~~~~~~~~~")
-        print("MORGAN, ELIZABETH, LUKAS, and GENEVIEVE, for being pretty cool people and keeping my mental state at a good place while \n\
-personal issues were taking place that could've definitely sunk my drive to finish making the game, \n\
-as well as showing interest in wanting to play my game once it was finished:)")
-        time.sleep(currentSettings.sleepTime)
-        print("~~~~~~~~~~~~~~~~")
-        print("JASUN, LUKE, CHARLOTTE, NOX, JORDAN(I'm back again =]), CORBIN, MORGAN, SHEPARD, BENNY, LUKAS, and many others for playtesting the game!:)")
-        time.sleep(currentSettings.sleepTime)
-        print("~~~~~~~~~~~~~~~~")
-        print("And lastly, YOU, the player, whoever you are, for beating my broken but meaningful mess of a game!:)")
-        time.sleep(currentSettings.sleepTime)
-        print(" ")
-        print("++++++++++++++++")
-        print(" ")
-        print("If you're curious about what the '(NUMBER out of 4)' means next to the name of the ending you got, try playing the game again and find out what would happen if you did things differently!:)")
+    if not brutalEnding:
+        if specialThanks == "yes":
+            print("This game took me(Matthew) a little bit under 2 months to make, and it was definitely a rollercoaster \n\
+    of hating programming and loving it, but I'd just like to say a couple quick things about some of the people who helped/supported me through \n\
+    the development process... ") 
+            time.sleep(currentSettings.sleepTime)
+            print(" ")
+            print("The first person I'd like to thank is God for allowing me to be here and have the experience to be able to make such a cool game, as well as allowing me to meet wonderful people \n\
+    like Jasun, Jordan(That's me, the other dev!), Corbin, and other people I'd consider friends:)")
+            time.sleep(currentSettings.sleepTime)
+            print(" ")
+            print("The next person is, of course, Jasun, for two very good reasons. First and foremost, without Jasun pushing me to constantly upgrade and continue learning Python as well as \n\
+    making the game itself, this game would've never been completed. Him helping me get through tricky lines of code is the second reason, as many of the things you experience throughout the game, \n\
+    such as the pig latin challenge and the normal fight scenes, wouldn't have functioned properly or at all without his advice. All in all, I'd like to thank Jasun for allowing me to do a project that I \n\
+    genuinely enjoyed working on (for most of the time at least), as well as helping me explore programming in general, as it is something I definitely want to pursue as a future career.")
+            time.sleep(currentSettings.sleepTime)
+            print(" ")
+            print("For the next person, I'm actually going to thank two people- those two people being Jordan and Corbin. When Jasun was busy helping other people out or was stumped about something \n\
+    concerning my code, Jordan and Corbin, without hesitation, always came to my aid to help me solve whatever issue was plagueing my code. Without them and their \n\
+    Albert Einstein-like brains, a substantial portion of this game would not be possible:)")
+            time.sleep(currentSettings.sleepTime)
+            print(" ")
+            print("Ok because there are a bunch of other people on my list that deserve paragraphs of their own, but also because I don't want this game to be like a million lines of code, I'm going to sum up the other people very quickly:")
+            time.sleep(currentSettings.sleepTime)
+            print("MICHELLE, for being supportive of my interest in coding even through tough times:)")
+            time.sleep(currentSettings.sleepTime)
+            print("~~~~~~~~~~~~~~~~")
+            print("LUKE, for showing a genuine interest in seeing my game be completed and even asking questions regarding the nerdy mechanics of what certain stuff did inside the code:)")
+            time.sleep(currentSettings.sleepTime)
+            print("~~~~~~~~~~~~~~~~")
+            print("VICTORY, for being the person I could have a good laugh with when programming annoyed me and I needed a break:)")
+            time.sleep(currentSettings.sleepTime)
+            print("~~~~~~~~~~~~~~~~")
+            print("DANNY, for being interested in playing my game once it was finished, as well as making ultimate frisbee be super fun and rewarding after doing a bunch of typing the Wednesday before in STEAM Club:)")
+            time.sleep(currentSettings.sleepTime)
+            print("~~~~~~~~~~~~~~~~")
+            print("DOUG, CAITLIN, BENNY, and JEFF, for letting me leave their classes early so I could work on my game:)")
+            time.sleep(currentSettings.sleepTime)
+            print("~~~~~~~~~~~~~~~~")
+            print("MORGAN, ELIZABETH, LUKAS, and GENEVIEVE, for being pretty cool people and keeping my mental state at a good place while \n\
+    personal issues were taking place that could've definitely sunk my drive to finish making the game, \n\
+    as well as showing interest in wanting to play my game once it was finished:)")
+            time.sleep(currentSettings.sleepTime)
+            print("~~~~~~~~~~~~~~~~")
+            print("JASUN, LUKE, CHARLOTTE, NOX, JORDAN(I'm back again =]), CORBIN, MORGAN, SHEPARD, BENNY, LUKAS, and many others for playtesting the game!:)")
+            time.sleep(currentSettings.sleepTime)
+            print("~~~~~~~~~~~~~~~~")
+            print("And lastly, YOU, the player, whoever you are, for beating my broken but meaningful mess of a game!:)")
+            time.sleep(currentSettings.sleepTime)
+            print(" ")
+            print("++++++++++++++++")
+            print(" ")
+            print("If you're curious about what the '(NUMBER out of 4)' means next to the name of the ending you got, try playing the game again and find out what would happen if you did things differently!:)")
+        else:
+            time.sleep(currentSettings.sleepTime)
+            print(" ")
+            print("++++++++++++++++")
+            print(" ")
+            print("Thanks for playing our game! If you're curious about what the '(NUMBER out of 4)' means next to the name of the ending you got, try playing the game again and find out what would happen if you did things differently!:)")
     else:
-        time.sleep(currentSettings.sleepTime)
-        print(" ")
-        print("++++++++++++++++")
-        print(" ")
-        print("Thanks for playing our game! If you're curious about what the '(NUMBER out of 4)' means next to the name of the ending you got, try playing the game again and find out what would happen if you did things differently!:)")
-        
+        if specialThanks == "yes":
+            print("Thanks so so much for playing, this mod was of course made by me, Jordan Baumann in the year 2022.\n\
+The story behind why this was made is sort of odd, I was thinking about Matthew's game, the unmodded version, and I thought that it'd be nice if there was more in-depth battle mechanics.\n\
+I of course didn't convince Matthew to do so, but I did come up with the idea of making a mod for that, so I did, and here we are now.\n\
+This mod took a decent while to make, and on many occassions I found myself facing the fact that writing is not my strongsuit.\n\
+I worked past this though, and ended up with a few extra jokes a things here and there to spice up the decently mundaine experiece of the game.\n\
+If you're wanting to know a bit about me and Matthew nowadays, we're actually working together in addition to Jasun Burdick and Corbin Roberts on a new game.\n\
+Isle of Hamsters is a exploration tower defense RTS with factory building mechanics set on an alien planet where you command giant hamsters.\n\
+So yeah, I'm glad that you read this, but if you're sitting there thinking to yourself... hmmm... I wonder if the 'sequel' to this game will ever come, \
+worry not, for it will... just give me a bit, game dev's hard enough with 1 game, even more so 2, but I've already started to think of new features. \
+You can expect to see many new features in the sequel including but not limited to:\n\
+    More complicated status effects\n\
+    Multiple units working for the player\n\
+    Bigger fights\n\
+    More emphasis on reproducing enemies(not just the final boss LOL)\n\
+    Better balance on weapons\n\
+    It'll be a roguelike\n\
+    Temporary summons that exist for single battles\n\
+    More complicated movement, so not just the lever 'puzzle'\n\
+    And much much more!!!\n\
+    Oh yeah, and real time gameplay =] It's still a text adventure though, don't worry.\n\
+... Anyways, I can't wait to see what you all think of this stuff! And if you're lucky, maybe I'll even put these games on Steam!!!\n\
+So... uh... Ciao!")
+        else:
+            print("The fun's not quite over yet friends, just wait... =] =] =] =] =]\n\
+    - sincerely, Jordan")
     print("\n")
     if not brutalEnding:
         oneOrTwo = random.randint(1, 2)
@@ -2010,9 +2041,6 @@ I just came by to tell you that I heard a rummor that the Pet Slime may not be a
             print("Hiya! It's Jordan! I'm the dev behind this 'mod',\n\
 I just came by to tell you that I heard a rumor that some sorcerer can get far more mad then he normally does... hmm... I wonder what that meant...")
         time.sleep(5)
-    else:
-        print("The fun's not quite over yet friends, just wait... =] =] =] =] =]\n\
-    - sincerely, Jordan")
 
     prompt = input("Do you want to play again? ('yes' or 'no') ")
     while prompt != "yes" and prompt != "no":
