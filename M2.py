@@ -193,6 +193,16 @@ class HitLocData:
 
 
 
+class AilmentHit:
+    data : HitLocData
+    damage : int
+
+    def __init__(self, data : HitLocData, damage : int):
+        self.data = data
+        self.damage = damage
+
+
+
 class Ailment:
     statusEffect : StatusEffect
     data : HitLocData
@@ -219,6 +229,7 @@ class Ailment:
 
 
 class AilmentStackBase:
+
     inflictors : int
     shouldBeDestroyed : bool
     count : int
@@ -233,7 +244,7 @@ class AilmentStackBase:
         print("You shouldn't be seeing this, AilmentStackBase : AddStatusEffect virtal function.")
     
     def Update(self):
-        return 0, [], [], 0
+        return # What gets returned here always changes so it's best if it's just an error causer.
     
     def Reduction(self):
         return 0
@@ -258,14 +269,12 @@ class StatusStackType0(AilmentStackBase): # No stacking pretty much. Think of al
         self.ailments.append(ailment)
     
     def Update(self):
-        totalDamage = 0
-        damageFromSources = [0] * self.count
-        damageSources = [0] * self.count
+        ailmentHits = [AilmentHit(HitLocData(0, "", 0.0))] * len(self.ailments)
 
         for i in range(self.count):
-            damageSources[i] = self.ailments[i].inflictor
-            damageFromSources[i] = self.ailments[i].Update()
-            totalDamage += damageFromSources[i]
+            ailmentHits[i].damage = self.ailments[i].Update()
+            ailmentHits[i].data = self.ailments[i].data
+        
         removedThisFrame = 0
         index = 0
         while index < len(self.ailments):
@@ -277,7 +286,7 @@ class StatusStackType0(AilmentStackBase): # No stacking pretty much. Think of al
                 index += 1 # index++
         if len(self.ailments) == 0:
             self.shouldBeDestroyed = True
-        return totalDamage, damageFromSources, damageSources, removedThisFrame
+        return ailmentHits, removedThisFrame
     
     def Reduction(self):
         return self.statusEffect.Reduction() * len(self.ailments)
@@ -376,7 +385,7 @@ class Ailments:
         self.stacks.append(statusStackTypeArray[ailment.statusEffect.effect.AccumulationType()](ailment))
     
     def Update(self):
-        damageFromSources = [0] * 10
+        damageFromSources = []
         damage = 0
         names = []
 
