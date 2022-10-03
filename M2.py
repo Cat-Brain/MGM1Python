@@ -283,7 +283,7 @@ class StatusStackType0(AilmentStackBase): # No stacking pretty much. Think of al
         return self.statusEffect.Reduction() * len(self.ailments)
     
     def Name(self):
-        return self
+        return self.ailments[0].name
 
 class StatusStackType1(AilmentStackBase): # Stacks durations and damage, most deadly.
     statusEffect : StatusEffect
@@ -315,6 +315,9 @@ class StatusStackType1(AilmentStackBase): # Stacks durations and damage, most de
     
     def Reduction(self):
         return self.statusEffect.Reduction() * self.count
+    
+    def Name(self):
+        return self.statusEffect.Name()
 
 class StatusStackType2(AilmentStackBase): # Stacks damage and resets duration, second most deadly. RoR2 bleed pretty much.
     statusEffect : StatusEffect
@@ -346,6 +349,9 @@ class StatusStackType2(AilmentStackBase): # Stacks damage and resets duration, s
     
     def Reduction(self):
         return self.statusEffect.Reduction() * self.count
+    
+    def Name(self):
+        return self.statusEffect.Name()
 
 #endregion
 
